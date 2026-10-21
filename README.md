@@ -1,6 +1,6 @@
 # universalWasmLoader-go
 
-The **Go port** of the [Universal WASM Loader](https://github.com/jrmarcum/universalWasmLoader-js) —
+The **Go port** of the [Universal WASM Loader](https://github.com/synapticforge1/universalWasmLoader-js) —
 a WIT-aware WebAssembly loader. Load a `.wasm` library, read its companion `.wit` interface, and call
 each export as an idiomatic Go function with Canonical-ABI marshalling handled for you (numbers
 direct, strings encoded/decoded through linear memory, booleans normalized).
@@ -15,8 +15,12 @@ direct, strings encoded/decoded through linear memory, booleans normalized).
 ## Install
 
 ```sh
-go get github.com/jrmarcum/universalWasmLoader-go
+go get github.com/synapticforge1/universalWasmLoader-go
 ```
+
+> The repository moved to the `synapticforge1` organization. v0.1.0 was published under the old
+> module path `github.com/jrmarcum/universalWasmLoader-go`; releases from v0.2.0 on use the path
+> above. To upgrade, change your import path and `go get` the new module.
 
 ## Usage
 
@@ -26,7 +30,7 @@ package main
 import (
 	"fmt"
 
-	wasmloader "github.com/jrmarcum/universalWasmLoader-go"
+	wasmloader "github.com/synapticforge1/universalWasmLoader-go"
 )
 
 func main() {

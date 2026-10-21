@@ -1,4 +1,4 @@
-module github.com/jrmarcum/universalWasmLoader-go
+module github.com/synapticforge1/universalWasmLoader-go
 
 go 1.26.4
 
