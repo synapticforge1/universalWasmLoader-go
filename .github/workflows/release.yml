@@ -35,10 +35,22 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Sanity gate. Builds the library only — the test suite is intentionally
-      # NOT run here because the tests/ fixtures are not published with the repo.
       - name: Build
         run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # Release gate: the SPEC fixture suite (tests/ = loader-js's stamped set).
+      # Tags before the fixtures were tracked have no tests/; only a manual
+      # backfill of such a tag may skip, and it says so. A tag push always tests.
+      - name: Test
+        run: |
+          if [ ! -f tests/fixtures.json ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::warning::$TAG predates the tracked fixtures (tests/); test suite skipped for this backfill."
+            exit 0
+          fi
+          go test -count=1 ./...
 
       - name: Extract release notes from CHANGELOG.md
         run: |

@@ -115,9 +115,12 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Tests
 
-- **Command:** `go test ./...` — **7/7 pass** (`go vet` + `gofmt` clean). `loader_test.go` covers the
-  SPEC §8 fixtures (`math_50`, `booleans_50`, `strings_50`, `imports_50`) plus
-  `Bind`, the singleton identity, and a concurrent `InstancePool` (size 2, 8 concurrent `Run`s).
+- **Command:** `go test ./...` — **9/9 pass** (`go vet` + `gofmt` clean, 2026-10-26). `loader_test.go`
+  covers the SPEC §8 fixtures (`math_50`, `booleans_50`, `strings_50`, `imports_50`), SPEC §10
+  (`init_check`: raw `getValue()` = `uint64(99)` proves `_initialize` ran; `wasi_io_50`:
+  `logAndDouble(21)` = 42 through wazero's WASI `fd_write`), plus `Bind`, the singleton identity, and
+  a concurrent `InstancePool` (size 2, 8 concurrent `Run`s). The two §10 tests were inverted on a
+  scratch copy (skip `_initialize` → only TestInitialize red; skip the WASI shim → only TestWasiIO red).
 - **Fixtures (2026-10-26):** `tests/` = loader-js `36aa661`'s stamped set, copied unmodified (wasmtk
   `4a5c3cf668d`; 12/12 sha256 verified against `tests/fixtures.json`). COPY `fixtures.json` from -js
   on every re-stamp; never regenerate it (`generator.describe` depends on the clone). `init_check`
@@ -140,8 +143,9 @@ codegen is a future add (not required for SPEC §7 conformance).
   warmed (`proxy.golang.org` serves it); pkg.go.dev indexes within minutes. `CHANGELOG.md` (Keep a
   Changelog format) added at repo root.
 - **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24). It fires
-  on any `v*` tag push, builds the library as a sanity gate (NOT `go test` — fixtures are unpublished),
-  extracts that version's notes from `CHANGELOG.md`, and creates/updates the Release using the
+  on any `v*` tag push, runs `go build`, `go vet` and `go test` as the release gate (since 2026-10-26;
+  before that it only built, as the fixtures were untracked — a manual backfill of a tag that
+  predates `tests/` skips the tests with a `::warning::`, a tag push never does), extracts that version's notes from `CHANGELOG.md`, and creates/updates the Release using the
   built-in `GITHUB_TOKEN` (no PAT / no local `gh auth`). The local machine has no `gh` auth, which is
   why CI does this. The v0.1.0 tag predates the workflow, so its Release must be backfilled once via
   **workflow_dispatch** (Actions tab → release → Run workflow → tag `v0.1.0`); the job is idempotent.
@@ -159,8 +163,8 @@ codegen is a future add (not required for SPEC §7 conformance).
   facts go in the gitignored `cmem/local/`. `.claude/settings.local.json` is gitignored (tool
   settings are never tracked).
 - **Consequence (2026-06-24 → 2026-10-26) — tests didn't run on a fresh clone**: `loader_test.go`
-  loads fixtures from `tests/`, which was untracked. Resolved by tracking `tests/`; CI still runs
-  `go build` only until `go test` is added to the workflow.
+  loads fixtures from `tests/`, which was untracked. Resolved by tracking `tests/` and gating the
+  release workflow on `go vet` + `go test` (2026-10-26).
 - **README license note corrected** to `MIT` (was `MIT OR Apache-2.0`) to match the single MIT
   `LICENSE` file — there is no Apache-2.0 text. Switch to true dual-licensing only by adding a
   `LICENSE-APACHE` file.

@@ -24,6 +24,10 @@ what is still open. The workspace, as each item's creator, verifies and closes i
   were missing. `go vet` clean, `go test ./...` 7/7; inverted (`math_50.wasm` truncated → exactly
   TestMath, TestBind, TestSingleton, TestPool red; the other three green), restored and re-verified.
   **`tests/` is TRACKED** (owner, 2026-10-26, reversing the 2026-06-24 "kept local" decision), with
-  `.gitattributes` `tests/** -text` so no checkout converts the fixtures' line endings. **Still
-  open:** CI runs `go build` only (item 3: add `go test`); `init_check` and `wasi_io_50` are copied
-  but not yet exercised by `loader_test.go`.
+  `.gitattributes` `tests/** -text` so no checkout converts the fixtures' line endings (fresh
+  `autocrlf=true` clone: 12/12 sha256, `go test` green).
+- **H7 / projects.md "CI builds, never tests" — fixed (this commit, see `git log`):** `init_check`
+  and `wasi_io_50` now tested (`TestInitialize`, `TestWasiIO`; 9/9), each inverted by a loader
+  mutation on a scratch copy (only its own test red). `release.yml` gates every tag on `go vet` +
+  `go test` (only a manual backfill of a pre-fixture tag may skip, with a warning). Not added: a
+  CI run on push / PR (the repo has only the tag-triggered workflow).

@@ -89,6 +89,24 @@ func TestImports(t *testing.T) {
 	}
 }
 
+// SPEC §10 — init_check: `_initialize` runs once after instantiation. The module has no `.wit`
+// (raw-exports path); `_initialize` sets a global to 99, so getValue returns 0 if it never ran.
+func TestInitialize(t *testing.T) {
+	m := mustLoad(t, "tests/init_check.wasm")
+	if got := call(t, m, "getValue"); got != uint64(99) {
+		t.Errorf("raw getValue() = %v (%T); want uint64(99) — _initialize not called", got, got)
+	}
+}
+
+// SPEC §10 — wasi_io_50: an I/O library (console.log → wasi_snapshot_preview1.fd_write)
+// instantiates and runs under the loader's WASI context.
+func TestWasiIO(t *testing.T) {
+	m := mustLoad(t, "tests/wasi_io_50.wasm")
+	if got := call(t, m, "logAndDouble", 21); got != int32(42) {
+		t.Errorf("logAndDouble(21) = %v (%T); want int32(42)", got, got)
+	}
+}
+
 // Pattern — Bind (destructure): a named export as a standalone callable.
 func TestBind(t *testing.T) {
 	m := mustLoad(t, "tests/math_50.wasm")
