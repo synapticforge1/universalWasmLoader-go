@@ -116,8 +116,12 @@ codegen is a future add (not required for SPEC §7 conformance).
 ## Tests
 
 - **Command:** `go test ./...` — **7/7 pass** (`go vet` + `gofmt` clean). `loader_test.go` covers the
-  SPEC §8 fixtures (`math_50`, `booleans_50`, `strings_50`, `imports_50` — copied into `tests/`) plus
+  SPEC §8 fixtures (`math_50`, `booleans_50`, `strings_50`, `imports_50`) plus
   `Bind`, the singleton identity, and a concurrent `InstancePool` (size 2, 8 concurrent `Run`s).
+- **Fixtures (2026-10-26):** `tests/` = loader-js `36aa661`'s stamped set, copied unmodified (wasmtk
+  `4a5c3cf668d`; 12/12 sha256 verified against `tests/fixtures.json`). COPY `fixtures.json` from -js
+  on every re-stamp; never regenerate it (`generator.describe` depends on the clone). `init_check`
+  and `wasi_io_50` are present but not yet tested here. Detail: [handoffs.md](handoffs.md).
 
 ## Build / release flow
 
@@ -146,17 +150,17 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Repo publishing decisions (2026-06-24)
 
-- **`tests/` and `CLAUDE.md` are gitignored and untracked** (owner request, 2026-06-24); they remain
-  on disk locally but are NOT published with the module.
+- **`CLAUDE.md` is gitignored and untracked** (owner request, 2026-06-24). **`tests/` was too
+  (2026-06-24 → 2026-10-26); it is TRACKED since 2026-10-26** (owner) — the stamped fixtures, kept
+  byte-exact by `.gitattributes` (`tests/** -text`). They ship in the module zip; consumers ignore them.
 - **`cmem/` is TRACKED again since 2026-10-26** (workspace letter H7 / drift L1; owner, 2026-10-22:
   fine as long as it displays no secrets or personal information). It was gitignored 2026-06-24 →
   2026-10-26. Scanned before tracking (drive paths, emails, tokens): 0 hits. Private, per-machine
   facts go in the gitignored `cmem/local/`. `.claude/settings.local.json` is gitignored (tool
   settings are never tracked).
-- **Consequence — tests don't run on a fresh clone.** `loader_test.go` loads fixtures from `tests/`
-  at runtime; with `tests/` untracked, `go test ./...` fails (file-not-found) for anyone cloning,
-  including CI. The library still builds and `go get` works fine (consumers don't need fixtures). Re-
-  include fixtures or generate them in a test step if CI/contributor testing is wanted later.
+- **Consequence (2026-06-24 → 2026-10-26) — tests didn't run on a fresh clone**: `loader_test.go`
+  loads fixtures from `tests/`, which was untracked. Resolved by tracking `tests/`; CI still runs
+  `go build` only until `go test` is added to the workflow.
 - **README license note corrected** to `MIT` (was `MIT OR Apache-2.0`) to match the single MIT
   `LICENSE` file — there is no Apache-2.0 text. Switch to true dual-licensing only by adding a
   `LICENSE-APACHE` file.

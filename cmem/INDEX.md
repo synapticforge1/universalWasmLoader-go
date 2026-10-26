@@ -31,5 +31,6 @@ comprehensive audit across tested AND untested paths for: (1) workarounds / temp
 
 | File | What it holds |
 | --- | --- |
+| [handoffs.md](handoffs.md) | This repo's answers to workspace letters (H7, H16, …) — recorded here; the workspace reads them and coordinates |
 | `local/` (gitignored) | Private per-clone machine facts — `environment.md` (the H16 exFAT `.git` setting) |
 | [overview.md](overview.md) | What this loader port is, where the repo lives (`synapticforge1` org since 2026-10-20; module path moved, released as v0.2.0 2026-10-20), its language/runtime, API surface, ABI/SPEC conformance status, tests, release flow, and release history (v0.1.0 published 2026-06-24 + publishing/gitignore decisions) |
