@@ -29,7 +29,10 @@ go.work.sum
 
 # Claude Code
 CLAUDE.md
-cmem/
+.claude/settings.local.json
+
+# Project memory: cmem/ is tracked; private notes stay local
+cmem/local/
 
 # Test fixtures (kept local, not published)
 tests/
