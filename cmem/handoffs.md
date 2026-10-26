@@ -26,7 +26,7 @@ what is still open. The workspace, as each item's creator, verifies and closes i
   **`tests/` is TRACKED** (owner, 2026-10-26, reversing the 2026-06-24 "kept local" decision), with
   `.gitattributes` `tests/** -text` so no checkout converts the fixtures' line endings (fresh
   `autocrlf=true` clone: 12/12 sha256, `go test` green).
-- **H7 / projects.md "CI builds, never tests" — fixed (this commit, see `git log`):** `init_check`
+- **H7 / projects.md "CI builds, never tests" — fixed, `d03da9c`:** `init_check`
   and `wasi_io_50` now tested (`TestInitialize`, `TestWasiIO`; 9/9), each inverted by a loader
   mutation on a scratch copy (only its own test red). `release.yml` gates every tag on `go vet` +
   `go test` (only a manual backfill of a pre-fixture tag may skip, with a warning). Not added: a
