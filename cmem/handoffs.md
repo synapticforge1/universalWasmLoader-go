@@ -10,7 +10,11 @@ what is still open. The workspace, as each item's creator, verifies and closes i
 - **H16 — exFAT `.git` fix: done.** `git stash list` empty, one branch; `gc --prune=now`,
   `fsck --connectivity-only` clean, **`maintenance.strategy gc`**; 1 pack / 35.48 KiB. Per clone, no
   commit; recorded in the private `cmem/local/environment.md`.
-- **H7 — `cmem/` un-ignored (L1): done, `d8f24d6`** (local, not pushed). Scanned before tracking
+**Pushed 2026-10-26 (owner: "commit and push"):** `d8f24d6`, `333a8eb`, `d03da9c` and `524b64f`
+are on `origin/main` (read back with `ls-remote`: `524b64f` = local). No tag was pushed and no
+release was cut.
+
+- **H7 — `cmem/` un-ignored (L1): done, `d8f24d6`.** Scanned before tracking
   (drive paths, emails, tokens; HEAD re-scanned with `git grep -a`): 0 hits. `cmem/local/` and
   `.claude/settings.local.json` gitignored. The pointer `CLAUDE.md` stays gitignored until it is cut
   to a pointer (its body is stale — drift L2).
