@@ -36,6 +36,11 @@ otherwise.
   README's `### ⚠️ Breaking Changes` row (`| _next release_ …` until bumped).
 - **Behaviour (Rule 3):** the previous tag's `*_test.go` run against the current code; a tag that
   tracked no fixtures (v0.2.0 and older) borrows the current `tests/`, and the report says so.
+- **CI (`release.yml`, owner 2026-11-08):** two jobs — `checks` (read-only token) runs everything
+  that executes package code; `release` (`contents: write`) runs only git, awk and `gh`. No
+  `uses:` steps: Go and Bun are pinned by version AND sha256 in the workflow's `env`; move a
+  version and its hash together, and keep `GO_VERSION` equal to `go.mod`'s `go` line (the job
+  refuses otherwise).
 - **The local gate is CI's gate:** `go build ./...` → `go vet ./...` → `go test -count=1 ./...` →
   `bun scripts/compat.ts`. Read every exit code; diff the counts below — a drop at exit 0 is a
   failure.

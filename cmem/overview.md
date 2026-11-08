@@ -126,9 +126,10 @@ codegen is a future add (not required for SPEC §7 conformance).
     callback's signature is checked AT LOAD (param types = the decoded Go types or an interface;
     one result of the WIT kind, or an interface). A callback returning `any` is checked BY VALUE
     when WASM calls it. Go has no Promise; a CHANNEL result is the analogue and is refused.
-  - Cancellation is the `ctx` (§11.2); `LoadOptions.Timeout` zero = the 30 s default (Go's
-    zero-value convention — SPEC §11.1 says zero is an error; recorded as a port divergence for
-    -js), `NoTimeout` = no limit, negative = error. `CreateSingleton` / `NewInstancePool` load
+  - Cancellation is the `ctx` (§11.2). 🔒 **`LoadOptions.Timeout` zero = the 30 s default** —
+    owner, 2026-11-08, on the divergence from SPEC §11.1 ("zero … is an error"): *"adjust for
+    go"*. Go's zero-value convention wins in this port: `LoadOptions{}` is the default,
+    `NoTimeout` = no limit, a negative value is the error. Do not "fix" it to match the JS letter. `CreateSingleton` / `NewInstancePool` load
     files only, so they take no options (§11.4 n/a — as -c and -dotnet).
   - Raw mode encodes / decodes by the export's WASM signature (`int32`/`int64`/`float32`/
     `float64`; several results as `[]any`) — outside §4's rule, but H29 (3) asks for `10.0`.
