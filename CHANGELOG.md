@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.3.0] - 2026-11-08
 
 Re-aligned to the cross-language **SPEC 4.0.0** — loud failures. Each item below refuses
 something v0.2.0 accepted, so this is a breaking release (a pre-1.0 minor). Fixtures unchanged.
@@ -71,5 +71,6 @@ First public release.
   pure-compute modules need no configuration.
 - Conforms to the cross-language SPEC v3.0.0.
 
+[v0.3.0]: https://github.com/synapticforge1/universalWasmLoader-go/releases/tag/v0.3.0
 [v0.2.0]: https://github.com/synapticforge1/universalWasmLoader-go/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/synapticforge1/universalWasmLoader-go/releases/tag/v0.1.0
