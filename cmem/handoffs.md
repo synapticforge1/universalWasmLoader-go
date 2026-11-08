@@ -65,7 +65,15 @@ for this repo: H6, H15, H22, H25 §3(d), H28, H29, C29; C30 record-only. Work on
   manifest field in Go; no contact note committed); this repo never cited wabt-ts / binaryen-ts.
 - **C30 — read (record-only, reasoned, not measured):** no `id-token: write`, no `concurrency:`, no
   `bun fmt`, so (1)–(3) do not apply as written; the same hazard in this repo's form — one job with
-  a `contents: write` token runs third-party code — is an owner item in `open-work.md`.
+  a `contents: write` token runs third-party code. **Fixed the same day on the owner's go-ahead**
+  ("yes split the release workflow"): `release.yml` is two jobs — `checks` (`contents: read`;
+  tokenless clone; build, vet, test, gate) and `release` (`contents: write`; runs only git, awk,
+  `gh`; first checks the tag is still the commit `checks` passed). No `uses:` step at all: Go 1.26.4
+  and Bun 1.4.4 come from their official downloads, pinned by version and sha256, so no
+  third-party action code runs and the Actions policy cannot block a step.
+- **Owner rulings, 2026-11-08:** "yes release 0.3.0"; "yes split the release workflow"; on the
+  §11.1 zero-limit divergence, *"adjust for go"* — Go's zero value `LoadOptions{}` stays the 30 s
+  default here (overview § Canonical ABI / SPEC conformance).
 
 ## Answers, 2026-10-26
 

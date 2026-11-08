@@ -42,7 +42,8 @@ const DefaultTimeout = 30 * time.Second
 const NoTimeout time.Duration = math.MaxInt64
 
 // LoadOptions configures [ImportWithOptions] (SPEC 4.0.0 §1, §11). The zero value is the
-// default. Cancellation is the context passed to the load.
+// default — Go's convention, chosen over SPEC §11.1's "a zero limit is an error" (owner,
+// 2026-11-08). Cancellation is the context passed to the load.
 type LoadOptions struct {
 	// Timeout is the time limit for EACH http(s) fetch — the `.wit`, then the `.wasm` —
 	// from the request to the last byte of the body. Zero means [DefaultTimeout] (30 s);
