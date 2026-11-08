@@ -101,7 +101,8 @@ Source files (package `wasmloader`):
 
 ### Public API
 
-The committed, generated list is `api-surface.txt` (26 lines, 2026-11-08). In short:
+The committed, generated list is `api-surface.txt` (25 lines incl. `module:` and `spec:`, re-counted
+2026-11-08 — an earlier note said 26). In short:
 `Load(path, cbs...) (*Module, error)` · `Import(ctx, src, cbs...) (*Module, error)` ·
 `ImportWithOptions(ctx, src, cbs, LoadOptions) (*Module, error)` · `LoadOptions{Timeout}` ·
 `DefaultTimeout` (30 s) · `NoTimeout` ·
@@ -129,8 +130,9 @@ codegen is a future add (not required for SPEC §7 conformance).
   - Cancellation is the `ctx` (§11.2). 🔒 **`LoadOptions.Timeout` zero = the 30 s default** —
     owner, 2026-11-08, on the divergence from SPEC §11.1 ("zero … is an error"): *"adjust for
     go"*. Go's zero-value convention wins in this port: `LoadOptions{}` is the default,
-    `NoTimeout` = no limit, a negative value is the error. Do not "fix" it to match the JS letter. `CreateSingleton` / `NewInstancePool` load
-    files only, so they take no options (§11.4 n/a — as -c and -dotnet).
+    `NoTimeout` = no limit, a negative value is the error. Do not "fix" it to match the JS letter.
+  - `CreateSingleton` / `NewInstancePool` load files only, so they take no options (§11.4 n/a — as
+    -c and -dotnet).
   - Raw mode encodes / decodes by the export's WASM signature (`int32`/`int64`/`float32`/
     `float64`; several results as `[]any`) — outside §4's rule, but H29 (3) asks for `10.0`.
 - Built **directly against SPEC v3.0.0** in 2026-06 (callee-allocated string returns + `cabi_post_<name>`); the
@@ -144,8 +146,9 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Tests
 
-- **2026-11-08:** `go test ./...` — **root 20/20 + `internal/apisurface` 1/1**; `go vet`, `gofmt`
-  clean. `refusal_test.go` (11) is SPEC 4.0.0 §8 "Refusals", row by row; the http rows run on an
+- **2026-11-08 (re-derived after the v0.3.0 release, at `09e227f`):** `go test ./...` — **root
+  20/20 + `internal/apisurface` 1/1**, 0 failed; `go vet`, `gofmt` clean; CI run 42508941015 ran
+  the same suite green on the tag. `refusal_test.go` (11) is SPEC 4.0.0 §8 "Refusals", row by row; the http rows run on an
   `httptest` server that counts requests per path and refuses a query on the `.wit`. Inverted: on
   v0.2.0's code all 10 compilable new tests are red; 8 single mutants on the new code each turn
   exactly their own test red (the query mutant first survived — best-practices L1). The gate:
@@ -158,16 +161,19 @@ codegen is a future add (not required for SPEC §7 conformance).
   scratch copy (skip `_initialize` → only TestInitialize red; skip the WASI shim → only TestWasiIO red).
 - **Fixtures (2026-10-26):** `tests/` = loader-js `36aa661`'s stamped set, copied unmodified (wasmtk
   `4a5c3cf668d`; 12/12 sha256 verified against `tests/fixtures.json`). COPY `fixtures.json` from -js
-  on every re-stamp; never regenerate it (`generator.describe` depends on the clone). `init_check`
-  and `wasi_io_50` are present but not yet tested here. Detail: [handoffs.md](handoffs.md).
+  on every re-stamp; never regenerate it (`generator.describe` depends on the clone). All six
+  fixtures are tested (`init_check` and `wasi_io_50` since `d03da9c`, 2026-10-26). Unchanged by
+  SPEC 4.0.0. Detail: [handoffs.md](handoffs.md).
 
 ## Build / release flow
 
 - **Build:** `go build ./...`. **Test:** `go test ./...`. **Gate:** `bun scripts/compat.ts`.
-- **Release (since 2026-11-08):** `bun scripts/bump.ts patch|minor|major` (gated; stamps CHANGELOG
-  and README) → commit `release: vX.Y.Z` → the owner tags `vX.Y.Z` and pushes; CI repeats
-  `compat.ts --release`. Installable via `go get`, indexed on pkg.go.dev.
-  No registry upload / secrets needed (unlike the JSR/PyPI/Maven ports).
+- **Release (since 2026-11-08; first used for v0.3.0):** `bun scripts/bump.ts patch|minor|major`
+  (gated; stamps CHANGELOG and README) → commit `release: vX.Y.Z` → annotated tag `vX.Y.Z`
+  (`git tag -a -F <file>`) → push `main`, then the tag — tagging and pushing only on the owner's
+  word → CI (below) → warm the proxy. Before tagging, run CI's own gate locally on the tagged
+  commit: `bun scripts/compat.ts --release vX.Y.Z`. Installable via `go get`, indexed on
+  pkg.go.dev. No registry upload / secrets needed (unlike the JSR/PyPI/Maven ports).
 - **Proxy warm step:** after pushing the tag, run `GOPROXY=https://proxy.golang.org go list -m
   github.com/synapticforge1/universalWasmLoader-go@vX.Y.Z` (from a scratch dir) to make `go get`
   resolve immediately and queue pkg.go.dev indexing. (v0.1.0 was warmed at the old `jrmarcum` path.)
@@ -186,15 +192,20 @@ codegen is a future add (not required for SPEC §7 conformance).
 - **v0.1.0 — published 2026-06-24** (under the old `github.com/jrmarcum/...` module path) (first public release; annotated tag pushed to `origin`). Proxy
   warmed (`proxy.golang.org` serves it); pkg.go.dev indexes within minutes. `CHANGELOG.md` (Keep a
   Changelog format) added at repo root.
-- **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24). It fires
-  on any `v*` tag push, runs `go build`, `go vet` and `go test` as the release gate (since 2026-10-26;
-  before that it only built, as the fixtures were untracked — a manual backfill of a tag that
-  predates `tests/` skips the tests with a `::warning::`, a tag push never does), extracts that version's notes from `CHANGELOG.md`, and creates/updates the Release using the
-  built-in `GITHUB_TOKEN` (no PAT / no local `gh auth`). The local machine has no `gh` auth, which is
-  why CI does this. The v0.1.0 tag predates the workflow, so its Release must be backfilled once via
-  **workflow_dispatch** (Actions tab → release → Run workflow → tag `v0.1.0`); the job is idempotent.
-  **Release-cutting flow going forward:** update `CHANGELOG.md` → `git tag vX.Y.Z` → push tag → CI
-  publishes the Release.
+- **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24; fires
+  on any `v*` tag push; `workflow_dispatch` backfills an old tag, idempotently). The local machine
+  has no `gh`, which is why CI does this. Its history:
+  - 2026-06-24: one job — build, then the Release from the tag's `CHANGELOG.md` section.
+  - 2026-10-26: `go vet` + `go test` gate added (a backfill of a tag that predates `tests/` skips
+    them with a `::warning::`; a tag push never does).
+  - 2026-11-08 (`928d1df`): the compatibility gate `bun scripts/compat.ts --release $TAG`.
+  - **2026-11-08 (`2ff71ef`, owner, workspace C30): two jobs, no `uses:`.** `checks`
+    (`contents: read`, tokenless clone) runs build / vet / test / gate; `release`
+    (`contents: write`) runs only git, awk and `gh`, after checking the tag is still the commit
+    `checks` passed. Go and Bun are installed from official downloads pinned by version + sha256
+    (`GO_VERSION` must equal `go.mod`'s `go` line). `12e3fb4`: the notes heading is matched
+    literally (`index`), since gawk reads the old dynamic regex as a bracket expression.
+    First run: v0.3.0's, 42508941015, green.
 
 ## Repo publishing decisions (2026-06-24)
 

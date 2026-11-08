@@ -10,7 +10,9 @@ what is still open. The workspace, as each item's creator, verifies and closes i
 Every row of `../../cmem/workspace-correspondence.md` naming loader-go was read first (owner:
 "review workspace for items needing this project's attention and make the requested fixes"). Open
 for this repo: H6, H15, H22, H25 §3(d), H28, H29, C29; C30 record-only. Work on branch
-`spec-4.0.0`, merged `--no-ff` into local `main`; **nothing pushed, tagged or released.**
+`spec-4.0.0`, merged `--no-ff` into `main`. (Written before the release; **later the same day
+everything was pushed and released as v0.3.0** — see the "RELEASED" bullet below. `origin/main`
+carries all of it.)
 
 - **C29 — SPEC 4.0.0: done, `1ee9771`.** All five items. (1) The `.wit` is read BEFORE the
   `.wasm`; raw only when it is absent (`fs.ErrNotExist`, HTTP 404 / 410) or the path does not end

@@ -35,8 +35,8 @@ letters it points to. Rules: [working-rules.md](working-rules.md).
 | File | What it holds |
 | --- | --- |
 | [handoffs.md](handoffs.md) | This repo's answers to workspace letters and ledger rows (H6–H29, C29, C30 on 2026-11-08; H7, H16 on 2026-10-26) |
-| [open-work.md](open-work.md) | The one list of what is outstanding: owner actions (release v0.3.0, C30 workflow split) and items waiting on others |
+| [open-work.md](open-work.md) | The one list of what is outstanding: items waiting on the workspace / loader-js to verify and close (v0.3.0 and the C30 split are done) |
 | [working-rules.md](working-rules.md) | The checklist: git, the compatibility gate, tooling (Bun scripts), privacy (path test, maintainer address), boundaries, session start |
 | [best-practices.md](best-practices.md) | METHOD rules: this repo's own (§ L) + the workspace's 28 ★ rules, copied verbatim and stamped 2026-11-08 |
 | `local/` (gitignored) | Private per-clone machine facts — `environment.md` (the H16 exFAT `.git` setting) |
-| [overview.md](overview.md) | What this loader port is, where it lives (`synapticforge1` org), runtime (wazero), API, SPEC 4.0.0 conformance and the port's choices, tests, release flow and history (v0.1.0, v0.2.0; v0.3.0 pending) |
+| [overview.md](overview.md) | What this loader port is, where it lives (`synapticforge1` org), runtime (wazero), API, SPEC 4.0.0 conformance and the port's choices, tests, the release flow and the two-job CI, release history (v0.1.0, v0.2.0, v0.3.0) |
