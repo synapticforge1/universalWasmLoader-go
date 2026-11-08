@@ -9,8 +9,15 @@ direct, strings encoded/decoded through linear memory, booleans normalized).
   works: no C toolchain, no native `libwasmtime` to ship, trivial cross-compilation.
 - **WASI Preview 1 built in** (SPEC §10) — I/O-using libraries (`console.log` → `fd_write`)
   instantiate with zero config; pure-compute modules need nothing.
-- Conforms to the cross-language **SPEC.md v3.0.0** (Canonical ABI, callee-allocated string returns +
-  `cabi_post_<name>`).
+- Conforms to the cross-language **SPEC.md v4.0.0** (Canonical ABI, callee-allocated string returns +
+  `cabi_post_<name>`; loud failures — see below).
+
+### ⚠️ Breaking Changes
+
+| Version | What changed | How to migrate |
+| --- | --- | --- |
+| _next release_ (SPEC 4.0.0) | Only an **absent** `.wit` (no file, HTTP 404 / 410) loads raw; any other `.wit` failure, and a `.wit` that does not parse (e.g. `u32`, a malformed parameter, an empty file), fails the load. Every WIT import needs a host callback whose signature fits it (checked at load); its return value is checked, never coerced. Typed calls refuse a wrong count or kind (`add(2.7, 1)`, `isEven(true)`, `multiply(2, 4.0)`). A WIT export the module lacks fails the load. Raw calls encode and decode by the export's WASM signature: an `i32` result is now `int32` (was `uint64`), an `f64` result `float64` (was its bit pattern). Each http(s) fetch has a 30 s limit. A path that does not end in `.wasm` loads raw. | Ship a `.wit` that parses, or none. Register a callback for every WIT import, with the Go types of the table below. Pass integers for `s32`/`s64` and floats for `f32`/`f64`. Change raw-result type assertions (`.(uint64)` → `.(int32)` / `.(float64)` …). Use `ImportWithOptions` for another time limit. |
+| v0.2.0 | Module path → `github.com/synapticforge1/universalWasmLoader-go` | Change the import path |
 
 ## Install
 
@@ -58,8 +65,11 @@ func main() {
 
 ### Host import callbacks
 
-Register host functions the module calls into, keyed by the **camelCase** WIT import name. Callbacks
-receive decoded native values:
+Register host functions the module calls into, keyed by the **camelCase** WIT import name — one for
+**every** WIT import, or the load fails naming the missing ones. Each callback takes one parameter
+per WIT parameter, of the Go type in the table below (or `any`), and an import with a result returns
+exactly one value of that kind; a value outside the WIT type's domain is an error from the export
+call that reached the import, never coerced. An import whose WIT result is `string` is refused.
 
 ```go
 cbs := wasmloader.NewCallbacks().
@@ -101,25 +111,40 @@ result, _ := pool.Run(func(m *wasmloader.Module) (any, error) {
 
 ### Loading from a URL
 
-`Load` is synchronous and file-only. For `http://`/`https://` sources use `Import`:
+`Load` is synchronous and file-only. For `http://`/`https://` sources use `Import`; `ctx` cancels
+the load, and each fetch (the `.wit`, then the `.wasm`, each fetched once) has a 30 s limit from the
+request to the last byte:
 
 ```go
 m, err := wasmloader.Import(ctx, "https://example.com/math.wasm")
+
+// Another limit (or wasmloader.NoTimeout):
+m, err = wasmloader.ImportWithOptions(ctx, "https://example.com/math.wasm", nil,
+	wasmloader.LoadOptions{Timeout: 5 * time.Second})
 ```
+
+An HTTP error is an error naming the status and URL. A `.wit` answering 404 or 410 means "no `.wit`"
+(raw exports); any other status, a network error or the time limit fails the load. The `.wasm` URL's
+query and fragment are not carried to the `.wit` URL. `CreateSingleton` and `NewInstancePool` load
+files only, so they take no options.
 
 ## Type mapping
 
-| WIT type | Go argument | Go return |
+| WIT type | Go argument (checked, never coerced) | Go return / callback parameter |
 | --- | --- | --- |
-| `s32` | `int` / `int32` | `int32` |
-| `s64` | `int64` | `int64` |
+| `s32` | any Go integer in [-2³¹, 2³¹ − 1] | `int32` |
+| `s64` | any Go integer in [-2⁶³, 2⁶³ − 1] | `int64` |
 | `f32` | `float32` / `float64` | `float32` |
-| `f64` | `float64` / numeric | `float64` |
+| `f64` | `float32` / `float64` | `float64` |
 | `bool` | `bool` | `bool` |
 | `string` | `string` | `string` |
 
-A module with no companion `.wit` is loaded with raw exports; `Call` then marshals by Go argument
-type (strings require a `.wit`).
+A wrong argument count, or an argument outside its type's domain (a float for `s32`, an integer for
+`f64`, an integer for `bool`), is an error naming the export and the parameter.
+
+A module with no companion `.wit` is loaded with raw exports; `Call` then encodes each argument and
+decodes each result by the export's own WASM types (`i32` → `int32`, `i64` → `int64`, `f32` →
+`float32`, `f64` → `float64`; several results as `[]any`). Strings require a `.wit`.
 
 ## Test
 
@@ -127,9 +152,10 @@ type (strings require a `.wit`).
 go test ./...
 ```
 
-The suite (`loader_test.go`) covers the cross-language SPEC §8 fixtures — numeric round-trip, bool
-normalization, string params/returns (Canonical ABI), host import callbacks — plus `Bind`, the
-singleton, and the concurrent instance pool.
+The suite covers the cross-language SPEC §8 fixtures (`loader_test.go`) — numeric round-trip, bool
+normalization, string params/returns (Canonical ABI), host import callbacks, the §10 `_initialize` and
+WASI fixtures — plus `Bind`, the singleton and the concurrent instance pool; and every row of SPEC
+4.0.0 §8 "Refusals" (`refusal_test.go`), the http rows against a local server that counts requests.
 
 ## License
 

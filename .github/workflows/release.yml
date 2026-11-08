@@ -52,6 +52,23 @@ jobs:
           fi
           go test -count=1 ./...
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      # The compatibility gate (workspace layout-and-packaging.md Rules 2, 3, 6): the step from
+      # the previous tag must meet the API-surface / SPEC floor, and the previous tag's tests
+      # must pass for a compatible step. Tags before the gate existed have no scripts/compat.ts;
+      # only a manual backfill of such a tag may skip, and it says so.
+      - name: Compatibility gate
+        run: |
+          if [ ! -f scripts/compat.ts ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::warning::$TAG predates the compatibility gate (scripts/compat.ts); gate skipped for this backfill."
+            exit 0
+          fi
+          bun scripts/compat.ts --release "$TAG"
+
       - name: Extract release notes from CHANGELOG.md
         run: |
           # The tag may predate CHANGELOG.md (e.g. a backfilled v0.1.0). In that
