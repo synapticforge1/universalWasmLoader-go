@@ -130,8 +130,10 @@ jobs:
             git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
             git show FETCH_HEAD:CHANGELOG.md > CHANGELOG.md
           fi
+          # The heading is matched LITERALLY (index), not as a dynamic regex: gawk reads
+          # "\\[" in a dynamic regex as a bracket expression, mawk does not.
           awk -v ver="$TAG" '
-            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            index($0, "## [" ver "]") == 1 { flag = 1; next }
             flag && /^## \[/ { exit }
             flag && /^\[[^]]+\]: / { next }
             flag { print }
