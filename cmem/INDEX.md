@@ -27,10 +27,16 @@ comprehensive audit across tested AND untested paths for: (1) workarounds / temp
 `cabi_post` calls); and (4) silent fall-throughs (returning a default instead of erroring). Report
 `file:line` + severity, fix the safe ones, and keep the test suite green (`go test ./...`).
 
+**Session start:** read `../../cmem/workspace-correspondence.md` (rows naming this repo), then the
+letters it points to. Rules: [working-rules.md](working-rules.md).
+
 ## Files
 
 | File | What it holds |
 | --- | --- |
-| [handoffs.md](handoffs.md) | This repo's answers to workspace letters (H7, H16, …) — recorded here; the workspace reads them and coordinates |
+| [handoffs.md](handoffs.md) | This repo's answers to workspace letters and ledger rows (H6–H29, C29, C30 on 2026-11-08; H7, H16 on 2026-10-26) |
+| [open-work.md](open-work.md) | The one list of what is outstanding: owner actions (release v0.3.0, C30 workflow split) and items waiting on others |
+| [working-rules.md](working-rules.md) | The checklist: git, the compatibility gate, tooling (Bun scripts), privacy (path test, maintainer address), boundaries, session start |
+| [best-practices.md](best-practices.md) | METHOD rules: this repo's own (§ L) + the workspace's 28 ★ rules, copied verbatim and stamped 2026-11-08 |
 | `local/` (gitignored) | Private per-clone machine facts — `environment.md` (the H16 exFAT `.git` setting) |
-| [overview.md](overview.md) | What this loader port is, where the repo lives (`synapticforge1` org since 2026-10-20; module path moved, released as v0.2.0 2026-10-20), its language/runtime, API surface, ABI/SPEC conformance status, tests, release flow, and release history (v0.1.0 published 2026-06-24 + publishing/gitignore decisions) |
+| [overview.md](overview.md) | What this loader port is, where it lives (`synapticforge1` org), runtime (wazero), API, SPEC 4.0.0 conformance and the port's choices, tests, release flow and history (v0.1.0, v0.2.0; v0.3.0 pending) |

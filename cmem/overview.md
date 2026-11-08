@@ -72,19 +72,28 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — IMPLEMENTED + SPEC-3.0.0 conformant (2026-06-17)
+## Current state — SPEC 4.0.0 conformant on branch `spec-4.0.0` (2026-11-08; not released)
 
-The loader is **fully implemented and passing the reference suite** (was a pre-implementation stub).
+Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
+`1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
+major (SPEC 3.0.0 → 4.0.0), and Rule 6 lets a pre-1.0 minor stand with README's Breaking Changes row
+(present, `_next release_`). Not bumped, merged-and-pushed or tagged: the owner's. Detail of the
+behaviour before and after: [handoffs.md](handoffs.md) § "Answers, 2026-11-08".
+
 Source files (package `wasmloader`):
 
-- `wit.go` — WIT parser (mirrors the JS `wit-parser.js`: kebab→camel, `s32` fallback, import/export
-  regex).
-- `abi.go` — Canonical-ABI marshalling: export param encode / result decode (incl. string params via
-  `cabi_realloc`, and the **callee-allocated string-return** convention — read the `[ptr,len]` pair,
-  decode, then call `cabi_post_<camel>`), plus the `env` host-import module (reflection-dispatched
-  user callbacks). Mirrors `abi.js` exactly.
-- `loader.go` — `Module` handle; `Load` (sync, file) / `Import` (file or `http(s)` URL); `Call` /
-  `Bind`; `@N` version pinning; WASI-P1 shim + `_initialize` (SPEC §10); raw fallback when no `.wit`.
+- `wit.go` — strict WIT parser, a port of loader-js `wit-parser.js` 2.0.0 (SPEC §2 grammar, the
+  reference's messages; an unsupported type is an error — the 3.0.0-era `s32` fallback is gone).
+- `abi.go` — Canonical-ABI marshalling: argument domains (checked, never coerced), export param
+  encode / result decode (string params via `cabi_realloc`; the **callee-allocated string-return**
+  convention — read the `[ptr,len]` pair, decode, then call `cabi_post_<camel>`), the callback
+  checks at load (`checkCallbacks`), the `env` host-import module (callback results checked by
+  value; a bad one panics with an error, which wazero returns from the export call), and raw-mode
+  encode/decode by the WASM value type.
+- `loader.go` — `Module` handle; `Load` (sync, file) / `Import` / `ImportWithOptions` (file or
+  `http(s)` URL; `LoadOptions{Timeout}`, ctx = cancellation); the `.wit` read and callbacks checked
+  BEFORE the `.wasm`; absent-vs-failed `.wit`; one fetch per file under one time limit; `Call` /
+  `Bind`; `@N` version pinning; WASI-P1 shim + `_initialize` (SPEC §10); missing WIT exports refused.
 - `callbacks.go` — `Callbacks` builder (`NewCallbacks().On(camelName, fn)`).
 - `singleton.go` — `CreateSingleton` (load-once via `sync.Once`; identity-stable `*Module`).
 - `pool.go` — `InstancePool` (buffered-channel semaphore over N independent runtimes; `Acquire` /
@@ -92,7 +101,10 @@ Source files (package `wasmloader`):
 
 ### Public API
 
+The committed, generated list is `api-surface.txt` (26 lines, 2026-11-08). In short:
 `Load(path, cbs...) (*Module, error)` · `Import(ctx, src, cbs...) (*Module, error)` ·
+`ImportWithOptions(ctx, src, cbs, LoadOptions) (*Module, error)` · `LoadOptions{Timeout}` ·
+`DefaultTimeout` (30 s) · `NoTimeout` ·
 `(*Module).Call(name, args...) (any, error)` · `(*Module).Bind(name) func(...any)(any,error)` ·
 `(*Module).Exports()` · `(*Module).Close()` · `CreateSingleton(path, cbs...) func()(*Module,error)` ·
 `NewInstancePool(path, size, cbs...) *InstancePool` (+`Acquire`/`AcquireContext`/`Release`/`Run`/`Close`)
@@ -104,7 +116,23 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Canonical ABI / SPEC conformance
 
-- Built **directly against SPEC v3.0.0** (callee-allocated string returns + `cabi_post_<name>`); the
+- **SPEC 4.0.0 (2026-11-08), the port's choices where Go differs from JS:**
+  - Typed-call domains: `s32` / `s64` take ANY Go integer kind, range-checked (an untyped constant
+    is an `int`, so `Call("add", 3, 4)` stays natural); `f32` / `f64` take `float32` / `float64`
+    only (an integer is refused, as -dotnet refuses `3` for `f64`); `bool` and `string` only their
+    own kind. Named types with those kinds are accepted. No kind-specific result accessors exist,
+    so S8's accessor half is n/a.
+  - Callbacks: Go's static types stand in for JS's `undefined` / `"17"` / `17n` rows — a
+    callback's signature is checked AT LOAD (param types = the decoded Go types or an interface;
+    one result of the WIT kind, or an interface). A callback returning `any` is checked BY VALUE
+    when WASM calls it. Go has no Promise; a CHANNEL result is the analogue and is refused.
+  - Cancellation is the `ctx` (§11.2); `LoadOptions.Timeout` zero = the 30 s default (Go's
+    zero-value convention — SPEC §11.1 says zero is an error; recorded as a port divergence for
+    -js), `NoTimeout` = no limit, negative = error. `CreateSingleton` / `NewInstancePool` load
+    files only, so they take no options (§11.4 n/a — as -c and -dotnet).
+  - Raw mode encodes / decodes by the export's WASM signature (`int32`/`int64`/`float32`/
+    `float64`; several results as `[]any`) — outside §4's rule, but H29 (3) asks for `10.0`.
+- Built **directly against SPEC v3.0.0** in 2026-06 (callee-allocated string returns + `cabi_post_<name>`); the
   deprecated 2.x caller-allocated out-param convention was skipped entirely.
 - Component ABI only (matches the JS reference `abi.js`, which has no separate "wasic ABI" branch —
   numeric/bool handling is profile-independent; strings use `cabi_realloc`/`cabi_post`).
@@ -115,9 +143,15 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Tests
 
-- **Command:** `go test ./...` — **9/9 pass** (`go vet` + `gofmt` clean, 2026-10-26). `loader_test.go`
+- **2026-11-08:** `go test ./...` — **root 20/20 + `internal/apisurface` 1/1**; `go vet`, `gofmt`
+  clean. `refusal_test.go` (11) is SPEC 4.0.0 §8 "Refusals", row by row; the http rows run on an
+  `httptest` server that counts requests per path and refuses a query on the `.wit`. Inverted: on
+  v0.2.0's code all 10 compilable new tests are red; 8 single mutants on the new code each turn
+  exactly their own test red (the query mutant first survived — best-practices L1). The gate:
+  `bun scripts/compat.ts` (working-rules § The gate); inverted in a scratch clone, six cases.
+- **2026-10-26 (before SPEC 4.0.0):** `go test ./...` — **9/9 pass** (`go vet` + `gofmt` clean). `loader_test.go`
   covers the SPEC §8 fixtures (`math_50`, `booleans_50`, `strings_50`, `imports_50`), SPEC §10
-  (`init_check`: raw `getValue()` = `uint64(99)` proves `_initialize` ran; `wasi_io_50`:
+  (`init_check`: raw `getValue()` = `uint64(99)` — `int32(99)` since SPEC 4.0.0's raw decode — proves `_initialize` ran; `wasi_io_50`:
   `logAndDouble(21)` = 42 through wazero's WASI `fd_write`), plus `Bind`, the singleton identity, and
   a concurrent `InstancePool` (size 2, 8 concurrent `Run`s). The two §10 tests were inverted on a
   scratch copy (skip `_initialize` → only TestInitialize red; skip the WASI shim → only TestWasiIO red).
@@ -128,8 +162,10 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Build / release flow
 
-- **Build:** `go build ./...`. **Test:** `go test ./...`.
-- **Release:** tag a semver `git tag vX.Y.Z` + push; installable via `go get`, indexed on pkg.go.dev.
+- **Build:** `go build ./...`. **Test:** `go test ./...`. **Gate:** `bun scripts/compat.ts`.
+- **Release (since 2026-11-08):** `bun scripts/bump.ts patch|minor|major` (gated; stamps CHANGELOG
+  and README) → commit `release: vX.Y.Z` → the owner tags `vX.Y.Z` and pushes; CI repeats
+  `compat.ts --release`. Installable via `go get`, indexed on pkg.go.dev.
   No registry upload / secrets needed (unlike the JSR/PyPI/Maven ports).
 - **Proxy warm step:** after pushing the tag, run `GOPROXY=https://proxy.golang.org go list -m
   github.com/synapticforge1/universalWasmLoader-go@vX.Y.Z` (from a scratch dir) to make `go get`
