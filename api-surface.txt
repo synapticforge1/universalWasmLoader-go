@@ -1,0 +1,25 @@
+module: github.com/synapticforge1/universalWasmLoader-go
+spec: 4.0.0
+const DefaultTimeout = 30 * time.Second
+const NoTimeout time.Duration = math.MaxInt64
+field LoadOptions.Timeout time.Duration
+func CreateSingleton(string, ...*Callbacks) func() (*Module, error)
+func Import(context.Context, string, ...*Callbacks) (*Module, error)
+func ImportWithOptions(context.Context, string, *Callbacks, LoadOptions) (*Module, error)
+func Load(string, ...*Callbacks) (*Module, error)
+func NewCallbacks() *Callbacks
+func NewInstancePool(string, int, ...*Callbacks) *InstancePool
+method (*Callbacks) On(string, any) *Callbacks
+method (*InstancePool) Acquire() (*Module, error)
+method (*InstancePool) AcquireContext(context.Context) (*Module, error)
+method (*InstancePool) Close() error
+method (*InstancePool) Release(*Module)
+method (*InstancePool) Run(func(*Module) (any, error)) (any, error)
+method (*Module) Bind(string) func(args ...any) (any, error)
+method (*Module) Call(string, ...any) (any, error)
+method (*Module) Close() error
+method (*Module) Exports() []string
+type Callbacks struct
+type InstancePool struct
+type LoadOptions struct
+type Module struct
