@@ -71,6 +71,11 @@ for this repo: H6, H15, H22, H25 §3(d), H28, H29, C29; C30 record-only. Work on
   `gh`; first checks the tag is still the commit `checks` passed). No `uses:` step at all: Go 1.26.4
   and Bun 1.4.4 come from their official downloads, pinned by version and sha256, so no
   third-party action code runs and the Actions policy cannot block a step.
+- **RELEASED as v0.3.0, 2026-11-08:** `release: v0.3.0` `faf46bb` = tag `v0.3.0` (annotated) =
+  `origin/main` (`ls-remote`). CI run 42508941015 green in both jobs; GitHub Release present with
+  its notes; `proxy.golang.org` lists v0.3.0 at `faf46bb`. Also `12e3fb4`: the notes step now
+  matches the CHANGELOG heading literally (gawk read the old dynamic regex as a bracket
+  expression; Ubuntu's mawk did not, so earlier Releases were fine).
 - **Owner rulings, 2026-11-08:** "yes release 0.3.0"; "yes split the release workflow"; on the
   §11.1 zero-limit divergence, *"adjust for go"* — Go's zero value `LoadOptions{}` stays the 30 s
   default here (overview § Canonical ABI / SPEC conformance).

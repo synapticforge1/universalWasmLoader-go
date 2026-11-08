@@ -72,12 +72,12 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — SPEC 4.0.0 conformant on branch `spec-4.0.0` (2026-11-08; not released)
+## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08)
 
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
 major (SPEC 3.0.0 → 4.0.0), and Rule 6 lets a pre-1.0 minor stand with README's Breaking Changes row
-(present, `_next release_`). Not bumped, merged-and-pushed or tagged: the owner's. Detail of the
+(present). Released 2026-11-08 (§ Release history). Detail of the
 behaviour before and after: [handoffs.md](handoffs.md) § "Answers, 2026-11-08".
 
 Source files (package `wasmloader`):
@@ -173,6 +173,13 @@ codegen is a future add (not required for SPEC §7 conformance).
   resolve immediately and queue pkg.go.dev indexing. (v0.1.0 was warmed at the old `jrmarcum` path.)
 
 ## Release history
+
+- **v0.3.0 — published 2026-11-08** (owner: "yes release 0.3.0"). SPEC 4.0.0. `bump.ts minor`
+  (Rule 6) → `faf46bb` `release: v0.3.0`; annotated tag `v0.3.0` (object `b128bb4`) → `faf46bb`;
+  `main` and the tag pushed, read back with `ls-remote`. CI run 42508941015, the first of the
+  two-job workflow: `checks` and `release` all green (gate: floor major, Rule 6, v0.2.0's 7 tests
+  green). GitHub Release `v0.3.0` with the CHANGELOG notes; `proxy.golang.org` serves v0.3.0 at
+  `faf46bb` (warmed with `go list -m`).
 
 - **v0.2.0 — published 2026-10-20.** Module path moved to `github.com/synapticforge1/...` after the
   repo transfer (breaking for importers, no API change). See "Repository location".

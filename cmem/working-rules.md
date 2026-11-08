@@ -47,6 +47,8 @@ otherwise.
 - **Invert every new test or gate** — break the thing on purpose, watch it fail for the RIGHT
   reason, restore. A test of a time limit needs a watchdog (best-practices L2); a test double must
   refuse what the spec forbids (L1).
+- **No inline scripts either:** `bun -e` counts as a heredoc for this rule (a `bun -e` YAML parse
+  slipped in on 2026-11-08, as did a `printf` merge message — use a file written with `Write`).
 - **Test counts (2026-11-08):** root package 20 (9 SPEC §8/§10 + pattern tests in
   `loader_test.go`, 11 refusal tests in `refusal_test.go`); `internal/apisurface` 1.
 
