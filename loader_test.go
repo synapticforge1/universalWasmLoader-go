@@ -91,10 +91,11 @@ func TestImports(t *testing.T) {
 
 // SPEC §10 — init_check: `_initialize` runs once after instantiation. The module has no `.wit`
 // (raw-exports path); `_initialize` sets a global to 99, so getValue returns 0 if it never ran.
+// A raw result is decoded by the export's WASM type: i32 → int32 (0.2.0 returned the raw uint64).
 func TestInitialize(t *testing.T) {
 	m := mustLoad(t, "tests/init_check.wasm")
-	if got := call(t, m, "getValue"); got != uint64(99) {
-		t.Errorf("raw getValue() = %v (%T); want uint64(99) — _initialize not called", got, got)
+	if got := call(t, m, "getValue"); got != int32(99) {
+		t.Errorf("raw getValue() = %v (%T); want int32(99) — _initialize not called", got, got)
 	}
 }
 

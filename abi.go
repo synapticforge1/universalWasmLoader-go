@@ -4,142 +4,170 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
+	"strings"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
 
-// --- value conversion helpers (native Go any -> primitive) ---
+// --- argument domains (SPEC 4.0.0 §4 "Typed-call arguments"): checked, never coerced ---
 
-func asInt64(v any) (int64, error) {
-	switch n := v.(type) {
-	case int:
-		return int64(n), nil
-	case int32:
-		return int64(n), nil
-	case int64:
-		return n, nil
-	case uint:
-		return int64(n), nil
-	case uint32:
-		return int64(n), nil
-	case uint64:
-		return int64(n), nil
-	case float32:
-		return int64(n), nil
-	case float64:
-		return int64(n), nil
-	case bool:
-		if n {
-			return 1, nil
-		}
-		return 0, nil
+// The Go kinds accepted for each WIT type. Integers accept every Go integer kind and are
+// range-checked (an untyped constant such as 3 is an int); floats accept the floating kinds;
+// bool and string accept only their own kind. A named type with that kind is accepted too.
+func isIntKind(k reflect.Kind) bool {
+	return k >= reflect.Int && k <= reflect.Uint64 || k == reflect.Uintptr
+}
+
+func isFloatKind(k reflect.Kind) bool { return k == reflect.Float32 || k == reflect.Float64 }
+
+// expectedDomain describes a WIT type's accepted Go values, for error messages.
+func expectedDomain(t witType) string {
+	switch t {
+	case typeS32:
+		return "an integer in [-2147483648, 2147483647]"
+	case typeS64:
+		return "an integer in [-2^63, 2^63 - 1]"
+	case typeF32, typeF64:
+		return "a float32 or float64"
+	case typeBool:
+		return "a bool"
 	default:
-		return 0, fmt.Errorf("expected an integer argument, got %T", v)
+		return "a string"
 	}
 }
 
-func asFloat64(v any) (float64, error) {
-	switch n := v.(type) {
-	case float64:
-		return n, nil
-	case float32:
-		return float64(n), nil
-	case int:
-		return float64(n), nil
-	case int32:
-		return float64(n), nil
-	case int64:
-		return float64(n), nil
-	default:
-		return 0, fmt.Errorf("expected a float argument, got %T", v)
+// showValue renders a value and its Go type for an error message.
+func showValue(v any) string {
+	if v == nil {
+		return "nil"
 	}
-}
-
-func asBool(v any) (bool, error) {
-	switch b := v.(type) {
-	case bool:
-		return b, nil
-	case int:
-		return b != 0, nil
-	case int32:
-		return b != 0, nil
-	case int64:
-		return b != 0, nil
-	default:
-		return false, fmt.Errorf("expected a bool argument, got %T", v)
-	}
-}
-
-func asString(v any) (string, error) {
 	if s, ok := v.(string); ok {
-		return s, nil
+		return fmt.Sprintf("%q (string)", s)
 	}
-	return "", fmt.Errorf("expected a string argument, got %T", v)
+	return fmt.Sprintf("%v (%T)", v, v)
+}
+
+// checkedInt returns v as an int64 if it is a Go integer within [lo, hi]; ok is false
+// otherwise (another kind, or out of range).
+func checkedInt(v any, lo, hi int64) (int64, bool) {
+	if v == nil {
+		return 0, false
+	}
+	rv := reflect.ValueOf(v)
+	k := rv.Kind()
+	if !isIntKind(k) {
+		return 0, false
+	}
+	if k >= reflect.Uint && k <= reflect.Uint64 || k == reflect.Uintptr {
+		u := rv.Uint()
+		if u > uint64(hi) {
+			return 0, false
+		}
+		return int64(u), true
+	}
+	n := rv.Int()
+	if n < lo || n > hi {
+		return 0, false
+	}
+	return n, true
+}
+
+// encodeScalar encodes a non-string value of WIT type t into its one WASM value, or reports
+// that v is outside t's domain (ok = false).
+func encodeScalar(t witType, v any) (uint64, bool) {
+	switch t {
+	case typeS32:
+		n, ok := checkedInt(v, math.MinInt32, math.MaxInt32)
+		return api.EncodeI32(int32(n)), ok
+	case typeS64:
+		n, ok := checkedInt(v, math.MinInt64, math.MaxInt64)
+		return api.EncodeI64(n), ok
+	case typeF32, typeF64:
+		if v == nil || !isFloatKind(reflect.TypeOf(v).Kind()) {
+			return 0, false
+		}
+		f := reflect.ValueOf(v).Float()
+		if t == typeF32 {
+			return api.EncodeF32(float32(f)), true
+		}
+		return api.EncodeF64(f), true
+	case typeBool:
+		if v == nil || reflect.TypeOf(v).Kind() != reflect.Bool {
+			return 0, false
+		}
+		if reflect.ValueOf(v).Bool() {
+			return 1, true
+		}
+		return 0, true
+	}
+	return 0, false
+}
+
+// signature renders a WIT function as `name(p: type, ...)` for error messages.
+func signature(fn witFunc) string {
+	ps := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		ps[i] = p.Name + ": " + string(p.Type)
+	}
+	return fn.TsName + "(" + strings.Join(ps, ", ") + ")"
 }
 
 // --- export call path (Go -> WASM -> Go), Canonical ABI ---
 
-// encodeParam encodes one native argument into its WASM value(s) for a parameter of the
-// given WIT type. A string param expands to two i32 values (ptr, len), allocating the
-// bytes via cabi_realloc and writing them into linear memory.
-func encodeParam(ctx context.Context, m *Module, t witType, v any) ([]uint64, error) {
-	switch t {
-	case typeS32:
-		n, err := asInt64(v)
-		if err != nil {
-			return nil, err
+// checkArgs validates a typed call's arguments against the WIT signature before anything is
+// written to WASM memory (SPEC 4.0.0 §4): count, then each argument's domain.
+func checkArgs(fn witFunc, args []any) error {
+	if len(args) != len(fn.Params) {
+		s := "s"
+		if len(fn.Params) == 1 {
+			s = ""
 		}
-		return []uint64{api.EncodeI32(int32(n))}, nil
-	case typeS64:
-		n, err := asInt64(v)
-		if err != nil {
-			return nil, err
-		}
-		return []uint64{api.EncodeI64(n)}, nil
-	case typeF32:
-		f, err := asFloat64(v)
-		if err != nil {
-			return nil, err
-		}
-		return []uint64{api.EncodeF32(float32(f))}, nil
-	case typeF64:
-		f, err := asFloat64(v)
-		if err != nil {
-			return nil, err
-		}
-		return []uint64{api.EncodeF64(f)}, nil
-	case typeBool:
-		b, err := asBool(v)
-		if err != nil {
-			return nil, err
-		}
-		if b {
-			return []uint64{1}, nil
-		}
-		return []uint64{0}, nil
-	case typeString:
-		s, err := asString(v)
-		if err != nil {
-			return nil, err
-		}
-		bytes := []byte(s)
-		ptr, err := m.realloc(ctx, uint32(len(bytes)))
-		if err != nil {
-			return nil, err
-		}
-		if !m.memory.Write(ptr, bytes) {
-			return nil, fmt.Errorf("string param write out of bounds (ptr=%d len=%d)", ptr, len(bytes))
-		}
-		return []uint64{api.EncodeI32(int32(ptr)), api.EncodeI32(int32(len(bytes)))}, nil
-	default:
-		n, err := asInt64(v)
-		if err != nil {
-			return nil, err
-		}
-		return []uint64{api.EncodeI32(int32(n))}, nil
+		return fmt.Errorf("wasmloader: %s expects %d argument%s, got %d", signature(fn), len(fn.Params), s, len(args))
 	}
+	for i, p := range fn.Params {
+		ok := false
+		if p.Type == typeString {
+			_, ok = args[i].(string)
+			if !ok && args[i] != nil {
+				ok = reflect.TypeOf(args[i]).Kind() == reflect.String
+			}
+		} else {
+			_, ok = encodeScalar(p.Type, args[i])
+		}
+		if !ok {
+			return fmt.Errorf("wasmloader: %s: parameter %s (%s) expects %s, got %s",
+				signature(fn), p.Name, p.Type, expectedDomain(p.Type), showValue(args[i]))
+		}
+	}
+	return nil
+}
+
+// encodeParam encodes one already-checked argument into its WASM value(s). A string param
+// expands to two i32 values (ptr, len), allocating the bytes via cabi_realloc and writing
+// them into linear memory.
+func encodeParam(ctx context.Context, m *Module, t witType, v any) ([]uint64, error) {
+	if t != typeString {
+		w, _ := encodeScalar(t, v)
+		return []uint64{w}, nil
+	}
+	bytes := []byte(reflect.ValueOf(v).String())
+	if m.realloc == nil {
+		return nil, fmt.Errorf("a string argument needs the module to export cabi_realloc, and it does not")
+	}
+	if m.memory == nil {
+		return nil, fmt.Errorf("a string argument needs the module to export its memory, and it does not")
+	}
+	ptr, err := m.realloc(ctx, uint32(len(bytes)))
+	if err != nil {
+		return nil, err
+	}
+	if !m.memory.Write(ptr, bytes) {
+		return nil, fmt.Errorf("string param write out of bounds (ptr=%d len=%d)", ptr, len(bytes))
+	}
+	return []uint64{api.EncodeI32(int32(ptr)), api.EncodeI32(int32(len(bytes)))}, nil
 }
 
 // decodeResult turns a WASM export's raw return into a native Go value per the function's
@@ -167,7 +195,10 @@ func (m *Module) decodeResult(ctx context.Context, fn witFunc, raw []uint64) (an
 		// bool is an i32 0/1 — mask to the low 32 bits (an f64-producing body can leave
 		// high-bit garbage in the result register, which a raw 64-bit != 0 would misread).
 		return uint32(raw[0]) != 0, nil
-	case typeString:
+	default: // string; the parser admits no other type
+		if m.memory == nil {
+			return nil, fmt.Errorf("a string result needs the module to export its memory, and it does not")
+		}
 		retArea := uint32(raw[0])
 		hdr, ok := m.memory.Read(retArea, 8)
 		if !ok {
@@ -186,32 +217,126 @@ func (m *Module) decodeResult(ctx context.Context, fn witFunc, raw []uint64) (an
 			}
 		}
 		return s, nil
-	default:
-		return api.DecodeI32(raw[0]), nil
 	}
 }
 
 // --- import side (WASM -> Go -> WASM): build the "env" host module ---
 
+// goTypeOf is the Go type a WIT value is decoded to for a host callback's parameter.
+func goTypeOf(t witType) reflect.Type {
+	switch t {
+	case typeS32:
+		return reflect.TypeOf(int32(0))
+	case typeS64:
+		return reflect.TypeOf(int64(0))
+	case typeF32:
+		return reflect.TypeOf(float32(0))
+	case typeF64:
+		return reflect.TypeOf(float64(0))
+	case typeBool:
+		return reflect.TypeOf(false)
+	default:
+		return reflect.TypeOf("")
+	}
+}
+
+// resultKindFits reports whether a callback's declared result type can carry WIT result t
+// without coercion: the same kind family (checked again by value when it is called), or an
+// interface (checked only by value).
+func resultKindFits(t witType, rt reflect.Type) bool {
+	k := rt.Kind()
+	switch {
+	case k == reflect.Interface:
+		return true
+	case t == typeS32 || t == typeS64:
+		return isIntKind(k)
+	case t == typeF32 || t == typeF64:
+		return isFloatKind(k)
+	default:
+		return t == typeBool && k == reflect.Bool
+	}
+}
+
+// checkCallbacks validates the host callbacks against the WIT imports before the `.wasm` is
+// read (SPEC 4.0.0 §4): every import needs one (all missing ones named at once), an import
+// returning a string is refused, and each callback's static signature must fit its import —
+// one parameter per WIT parameter, each of the decoded Go type (or an interface it
+// satisfies), and for an import with a result exactly one result of a fitting kind.
+func checkCallbacks(imports []witFunc, cbs *Callbacks) error {
+	var missing, stringResult []string
+	for _, imp := range imports {
+		label := fmt.Sprintf("%s (WIT %q)", imp.TsName, imp.Name)
+		if cbs == nil || cbs.fns[imp.TsName] == nil {
+			missing = append(missing, label)
+		}
+		if imp.Result == typeString {
+			stringResult = append(stringResult, label)
+		}
+	}
+	if len(missing) > 0 {
+		s := ""
+		if len(missing) > 1 {
+			s = "s"
+		}
+		return fmt.Errorf("wasmloader: no host callback for WIT import%s: %s", s, strings.Join(missing, ", "))
+	}
+	if len(stringResult) > 0 {
+		return fmt.Errorf("wasmloader: a WIT import returning a string is not supported: %s", strings.Join(stringResult, ", "))
+	}
+	for _, imp := range imports {
+		ft := reflect.TypeOf(cbs.fns[imp.TsName])
+		label := fmt.Sprintf("host callback %s (WIT import %q: %s)", imp.TsName, imp.Name, witSignature(imp))
+		if ft.Kind() != reflect.Func {
+			return fmt.Errorf("wasmloader: %s is a %s, not a function", label, ft)
+		}
+		if ft.IsVariadic() || ft.NumIn() != len(imp.Params) {
+			return fmt.Errorf("wasmloader: %s has signature %s; it must take exactly %d parameter(s)", label, ft, len(imp.Params))
+		}
+		for i, p := range imp.Params {
+			want := goTypeOf(p.Type)
+			in := ft.In(i)
+			if !(in.Kind() == want.Kind() && want.ConvertibleTo(in)) && !(in.Kind() == reflect.Interface && want.Implements(in)) {
+				return fmt.Errorf("wasmloader: %s: parameter %d (%s: %s) must be a %s, not %s", label, i+1, p.Name, p.Type, want, in)
+			}
+		}
+		if imp.Result == "" {
+			continue // a void import ignores whatever the callback returns
+		}
+		if ft.NumOut() != 1 {
+			return fmt.Errorf("wasmloader: %s has signature %s; it must return exactly one %s", label, ft, imp.Result)
+		}
+		if out := ft.Out(0); !resultKindFits(imp.Result, out) {
+			return fmt.Errorf("wasmloader: %s returns %s; expected %s", label, out, expectedDomain(imp.Result))
+		}
+	}
+	return nil
+}
+
+// witSignature renders a WIT import as `func(p: type, ...) -> result`.
+func witSignature(fn witFunc) string {
+	ps := make([]string, len(fn.Params))
+	for i, p := range fn.Params {
+		ps[i] = p.Name + ": " + string(p.Type)
+	}
+	s := "func(" + strings.Join(ps, ", ") + ")"
+	if fn.Result != "" {
+		s += " -> " + string(fn.Result)
+	}
+	return s
+}
+
 // registerEnvImports instantiates a wazero host module named "env" satisfying each WIT
-// import, dispatching to the user's registered callback. Memory for string-param imports
-// is read from the calling module's memory at call time (it does not exist at build time).
+// import, dispatching to the user's registered callback (already checked by checkCallbacks).
+// Memory for string-param imports is read from the calling module's memory at call time.
 func registerEnvImports(ctx context.Context, r wazero.Runtime, imports []witFunc, cbs *Callbacks) error {
 	hb := r.NewHostModuleBuilder("env")
-	for i := range imports {
-		imp := imports[i]
-		var cb any
-		if cbs != nil {
-			cb = cbs.fns[imp.TsName]
-		}
-		paramTypes := flattenParamValueTypes(imp.Params)
+	for _, imp := range imports {
 		var resultTypes []api.ValueType
 		if imp.Result != "" {
 			resultTypes = []api.ValueType{resultValueType(imp.Result)}
 		}
-		fn := makeHostFunc(imp, cb)
 		hb.NewFunctionBuilder().
-			WithGoModuleFunction(api.GoModuleFunc(fn), paramTypes, resultTypes).
+			WithGoModuleFunction(api.GoModuleFunc(makeHostFunc(imp, cbs.fns[imp.TsName])), flattenParamValueTypes(imp.Params), resultTypes).
 			Export(kebabToWasmImportKey(imp.Name))
 	}
 	_, err := hb.Instantiate(ctx)
@@ -219,118 +344,70 @@ func registerEnvImports(ctx context.Context, r wazero.Runtime, imports []witFunc
 }
 
 // makeHostFunc builds the wazero host-function body for one WIT import. It decodes the raw
-// stack per the import's params, invokes the user callback via reflection (converting each
-// arg to the callback's declared parameter type), and writes the encoded result to stack[0].
+// stack per the import's params, calls the user callback, checks its return value against the
+// WIT result (SPEC 4.0.0 §4: never coerced) and writes the encoded result to stack[0]. A bad
+// value panics with an error, which wazero turns into the error of the export call that
+// reached the import.
 func makeHostFunc(imp witFunc, cb any) func(context.Context, api.Module, []uint64) {
-	var fnVal reflect.Value
-	if cb != nil {
-		fnVal = reflect.ValueOf(cb)
-	}
+	fnVal := reflect.ValueOf(cb)
+	ft := fnVal.Type()
+	label := fmt.Sprintf("host callback %s (WIT import %q -> %s)", imp.TsName, imp.Name, imp.Result)
 	return func(ctx context.Context, mod api.Module, stack []uint64) {
-		// Decode the flattened stack into native Go args.
-		args := make([]any, 0, len(imp.Params))
+		in := make([]reflect.Value, 0, len(imp.Params))
 		si := 0
-		for _, p := range imp.Params {
+		for i, p := range imp.Params {
+			var v any
 			switch p.Type {
 			case typeString:
-				ptr := uint32(stack[si])
-				ln := uint32(stack[si+1])
+				ptr, ln := uint32(stack[si]), uint32(stack[si+1])
 				si += 2
-				s := ""
-				if b, ok := mod.Memory().Read(ptr, ln); ok {
-					s = string(b)
+				mem := mod.Memory()
+				if mem == nil {
+					panic(fmt.Errorf("wasmloader: import %q received a string but the module exports no memory", imp.Name))
 				}
-				args = append(args, s)
+				b, ok := mem.Read(ptr, ln)
+				if !ok {
+					panic(fmt.Errorf("wasmloader: import %q: string argument out of bounds (ptr=%d len=%d)", imp.Name, ptr, ln))
+				}
+				v = string(b)
 			case typeBool:
-				args = append(args, stack[si] != 0)
+				v = uint32(stack[si]) != 0
 				si++
 			case typeF32:
-				args = append(args, api.DecodeF32(stack[si]))
+				v = api.DecodeF32(stack[si])
 				si++
 			case typeF64:
-				args = append(args, api.DecodeF64(stack[si]))
+				v = api.DecodeF64(stack[si])
 				si++
 			case typeS64:
-				args = append(args, int64(stack[si]))
+				v = int64(stack[si])
 				si++
 			default: // s32
-				args = append(args, api.DecodeI32(stack[si]))
+				v = api.DecodeI32(stack[si])
 				si++
 			}
-		}
-
-		// No callback registered: satisfy the import with a zero/void result.
-		if !fnVal.IsValid() {
-			if imp.Result != "" {
-				stack[0] = 0
+			av := reflect.ValueOf(v)
+			if t := ft.In(i); t.Kind() != reflect.Interface {
+				av = av.Convert(t) // same kind (checked at load): a named type only
 			}
-			return
-		}
-
-		// Reflect-call the user callback, converting each arg to its declared param type.
-		ft := fnVal.Type()
-		in := make([]reflect.Value, len(args))
-		for i, a := range args {
-			av := reflect.ValueOf(a)
-			if i < ft.NumIn() && av.Type().ConvertibleTo(ft.In(i)) {
-				av = av.Convert(ft.In(i))
-			}
-			in[i] = av
+			in = append(in, av)
 		}
 		out := fnVal.Call(in)
-		if imp.Result == "" || len(out) == 0 {
+		if imp.Result == "" {
 			return
 		}
-		stack[0] = encodeReflectResult(imp.Result, out[0])
-	}
-}
-
-// encodeReflectResult encodes a reflected callback return value into a single WASM value.
-func encodeReflectResult(t witType, rv reflect.Value) uint64 {
-	switch t {
-	case typeF64:
-		return api.EncodeF64(reflectFloat(rv))
-	case typeF32:
-		return api.EncodeF32(float32(reflectFloat(rv)))
-	case typeS64:
-		return api.EncodeI64(reflectInt(rv))
-	case typeBool:
-		if rv.Kind() == reflect.Bool && rv.Bool() {
-			return 1
+		ret := out[0].Interface()
+		if out[0].Kind() == reflect.Interface && out[0].IsNil() {
+			ret = nil
 		}
-		if rv.Kind() != reflect.Bool && reflectInt(rv) != 0 {
-			return 1
+		if ret != nil && reflect.TypeOf(ret).Kind() == reflect.Chan {
+			panic(fmt.Errorf("wasmloader: %s returned a channel; host callbacks must return their value synchronously (WASM cannot wait)", label))
 		}
-		return 0
-	default: // s32
-		return api.EncodeI32(int32(reflectInt(rv)))
-	}
-}
-
-func reflectFloat(rv reflect.Value) float64 {
-	switch rv.Kind() {
-	case reflect.Float32, reflect.Float64:
-		return rv.Float()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return float64(rv.Int())
-	default:
-		return 0
-	}
-}
-
-func reflectInt(rv reflect.Value) int64 {
-	switch rv.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return rv.Int()
-	case reflect.Float32, reflect.Float64:
-		return int64(rv.Float())
-	case reflect.Bool:
-		if rv.Bool() {
-			return 1
+		w, ok := encodeScalar(imp.Result, ret)
+		if !ok {
+			panic(fmt.Errorf("wasmloader: %s returned %s; expected %s", label, showValue(ret), expectedDomain(imp.Result)))
 		}
-		return 0
-	default:
-		return 0
+		stack[0] = w
 	}
 }
 
@@ -363,7 +440,62 @@ func resultValueType(t witType) api.ValueType {
 		return api.ValueTypeF64
 	case typeS64:
 		return api.ValueTypeI64
-	default: // s32, bool, string(ptr)
+	default: // s32, bool (a string result is refused at load)
 		return api.ValueTypeI32
 	}
+}
+
+// --- raw exports (no `.wit`): encoded by the export's own WASM signature ---
+
+// encodeRaw encodes a raw-call argument for a WASM value type: an integer kind (range-checked)
+// or a bool for i32 / i64, a floating kind for f32 / f64. Raw exports are outside SPEC §4's
+// typed-call rule, but a value is still never reinterpreted.
+func encodeRaw(vt api.ValueType, v any) (uint64, bool) {
+	if v != nil && reflect.TypeOf(v).Kind() == reflect.Bool && (vt == api.ValueTypeI32 || vt == api.ValueTypeI64) {
+		if reflect.ValueOf(v).Bool() {
+			return 1, true
+		}
+		return 0, true
+	}
+	switch vt {
+	case api.ValueTypeI32:
+		// i32 has no sign: accept [-2^31, 2^32 - 1] so an unsigned bit pattern passes too.
+		n, ok := checkedInt(v, math.MinInt32, math.MaxUint32)
+		return uint64(uint32(n)), ok
+	case api.ValueTypeI64:
+		if n, ok := checkedInt(v, math.MinInt64, math.MaxInt64); ok {
+			return uint64(n), true
+		}
+		if v != nil && reflect.TypeOf(v).Kind() == reflect.Uint64 {
+			return reflect.ValueOf(v).Uint(), true
+		}
+		return 0, false
+	case api.ValueTypeF32:
+		if v == nil || !isFloatKind(reflect.TypeOf(v).Kind()) {
+			return 0, false
+		}
+		return api.EncodeF32(float32(reflect.ValueOf(v).Float())), true
+	case api.ValueTypeF64:
+		if v == nil || !isFloatKind(reflect.TypeOf(v).Kind()) {
+			return 0, false
+		}
+		return api.EncodeF64(reflect.ValueOf(v).Float()), true
+	}
+	return 0, false
+}
+
+// decodeRaw decodes a raw WASM result by its value type: i32 → int32, i64 → int64,
+// f32 → float32, f64 → float64 (never the bit pattern).
+func decodeRaw(vt api.ValueType, w uint64) any {
+	switch vt {
+	case api.ValueTypeI32:
+		return api.DecodeI32(w)
+	case api.ValueTypeI64:
+		return int64(w)
+	case api.ValueTypeF32:
+		return api.DecodeF32(w)
+	case api.ValueTypeF64:
+		return api.DecodeF64(w)
+	}
+	return w // externref / funcref / v128 low half: the engine's value as it is
 }
