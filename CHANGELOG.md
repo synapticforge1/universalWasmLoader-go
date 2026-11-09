@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**No change to the library.**
+
+### Changed
+
+- The release workflow makes each new tag's GitHub Release page in a fixed order: the tag must
+  exist and point at the checked commit, an existing page is left alone, and the new page is read
+  back. Each request to GitHub has a 30 s limit. The page now opens with a pkg.go.dev link.
+
 ## [v0.3.1] - 2026-11-09
 
 **No change to the library**: the API, behaviour and SPEC level (4.0.0) are those of v0.3.0, and

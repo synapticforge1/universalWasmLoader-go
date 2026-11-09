@@ -4,13 +4,14 @@ Only open items; each points at its record. Status as of 2026-11-09.
 
 ## Owner actions
 
-None open. (2026-11-09: the H30 change is pushed and was measured by the v0.3.1 release — run
-42638054957 created the GitHub Release through the REST API; overview § Release history.)
+1. **Push the H32 change** (`release.yml` + `scripts/github-release.ts` + its tests, in H32's
+   order) — on local `main` only; the push is the owner's.
+2. **Its first real measurement is the next tag** (no release is planned for it alone): read that
+   run's `release` job and the new page's `author.login`, and write them into the H32 cell.
 
 ## Waiting on others
 
-- The workspace / loader-js verify and close H6, H15, H22, H25, H28, H29, C29, C35, H30 and H31 for
-  this repo; S3D closes C30 ([handoffs.md](handoffs.md)). Each row's creator closes it; this repo
-  never flips a status.
-- loader-js: the owner's ruling on SPEC §11.1 for Go (zero = the default) is reported in C35;
-  whether the SPEC text records a port allowance is -js's to write.
+- The workspace re-reads H30, H31 and H32 for this repo; S3D closes C30 ([handoffs.md](handoffs.md)).
+  Each row's creator closes it; this repo never flips another's status.
+- **C35 (this repo's row):** closes once loader-js records the owner's §11.1 ruling for Go
+  (`LoadOptions{}` = the 30 s default) — in its SPEC as a port allowance, or as a note.

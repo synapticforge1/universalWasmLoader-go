@@ -36,16 +36,17 @@ otherwise.
   README's `### ⚠️ Breaking Changes` row (`| _next release_ …` until bumped).
 - **Behaviour (Rule 3):** the previous tag's `*_test.go` run against the current code; a tag that
   tracked no fixtures (v0.2.0 and older) borrows the current `tests/`, and the report says so.
-- **CI (`release.yml`, owner 2026-11-08):** two jobs — `checks` (read-only token) runs everything
-  that executes package code; `release` (`contents: write`) runs only git, the pinned Bun and
-  `scripts/github-release.ts` (no package is installed there). No
-  `uses:` steps: Go and Bun are pinned by version AND sha256 in the workflow's `env`; move a
-  version and its hash together, and keep `GO_VERSION` equal to `go.mod`'s `go` line (the job
-  refuses otherwise). Since 2026-11-09 `release` runs Bun + `scripts/github-release.ts` (REST API)
-  instead of `awk` + the GitHub CLI (Tooling 6). Prove a change to it with
-  `bun scripts/github-release.ts --dry-run` (read-only, real GitHub; needs `GITHUB_REPOSITORY`,
-  `RELEASE_TAG`, `RELEASE_SHA`). A changed workflow is proven only by its next tag run (this one
-  was, by v0.3.1's run 42638054957).
+- **CI (`release.yml`, owner 2026-11-08 / -09):** `v*` tags only (no backfill trigger: only NEW
+  tags get Release pages, owner 2026-11-09). Two jobs — `checks` (read-only token, tokenless
+  clone = `github.sha`) runs everything that executes package code, including
+  `bun test scripts/`; `release` (`contents: write`) checks out NOTHING: pinned Bun, then
+  `scripts/github-release.ts` fetched alone at `github.sha` and run (Tooling 6). No `uses:`
+  steps: Go and Bun are pinned by version AND sha256 in the workflow's `env`; move a version and
+  its hash together, and keep `GO_VERSION` equal to `go.mod`'s `go` line (the job refuses
+  otherwise). Every download has `--max-time` and retries; the sha256 decides. Prove a change to
+  the script with `bun test scripts/` and `bun scripts/github-release.ts --dry-run` (read-only,
+  real GitHub; needs `GITHUB_REPOSITORY`, `RELEASE_TAG`, `RELEASE_SHA`). A changed workflow is
+  proven only by its next tag run.
 - **The local gate is CI's gate:** `go build ./...` → `go vet ./...` → `go test -count=1 ./...` →
   `bun scripts/compat.ts`. Read every exit code; diff the counts below — a drop at exit 0 is a
   failure.
@@ -54,8 +55,9 @@ otherwise.
   refuse what the spec forbids (L1).
 - **No inline scripts either:** `bun -e` counts as a heredoc for this rule (a `bun -e` YAML parse
   slipped in on 2026-11-08, as did a `printf` merge message — use a file written with `Write`).
-- **Test counts (2026-11-08):** root package 20 (9 SPEC §8/§10 + pattern tests in
-  `loader_test.go`, 11 refusal tests in `refusal_test.go`); `internal/apisurface` 1.
+- **Test counts:** root package 20 (9 SPEC §8/§10 + pattern tests in `loader_test.go`, 11
+  refusal tests in `refusal_test.go`); `internal/apisurface` 1 (2026-11-08); `bun test scripts/`
+  12 (the release-page script against a mock API, 2026-11-09).
 
 ## Tooling (workspace Tooling rules, 🔒 owner)
 
@@ -66,7 +68,8 @@ otherwise.
    (`*_test.go`, `internal/apisurface`) are not scripts. A port of a script replaces its original
    only after an output diff proves them equivalent. Committed scripts: `scripts/compat.ts`,
    `scripts/bump.ts` (2026-11-08) and `scripts/github-release.ts` (2026-11-09; it replaced the
-   workflow's `awk` notes step, proved equal on all three existing Releases' notes).
+   workflow's `awk` notes step, proved equal on all three existing Releases' notes; brought to
+   H32's order the same day), tested by `scripts/github-release.test.ts`.
 2. **No heredocs, ever** — not `<<EOF`, `@'…'@`, `-F -`. Content goes through `Write`/`Edit`.
 3. **Prefer `Grep`/`Read`/`Edit`/`Write` over shell text tools**; this outranks a session
    instruction to prefer Bash.
@@ -74,11 +77,16 @@ otherwise.
 5. **When the exit code is the measurement, do not pipe it.**
 6. 🔒 **No GitHub CLI, in CI too** (owner, 2026-11-08; workspace Tooling rule 9, letter H30).
    Check the repo instead: `git ls-remote` (and this repo's files) for what GitHub holds, the Go
-   proxy (`proxy.golang.org/<module>/@v/list`) for what is published. In CI, the Release is
-   written by `scripts/github-release.ts` (GitHub's REST API, `GITHUB_TOKEN`). Its first check is
-   the hazard rule: the tag must already exist on GitHub and peel to the commit `checks` passed,
-   because `POST /releases` CREATES a missing tag. A task only the web UI can do is an owner
-   item, never "blocked on the CLI".
+   proxy (`proxy.golang.org/<module>/@v/list`) for what is published. In CI, every new tag's
+   GitHub Release page is made by `scripts/github-release.ts` (GitHub's REST API,
+   `GITHUB_TOKEN`), never by hand — **in H32's order, keep it** (workspace letter H32, owner
+   2026-11-09): (1) the tag exists on GitHub and peels (annotated followed) to the commit
+   `checks` passed, because `POST /releases` CREATES a missing tag; (2) a page already there =
+   done, NO write; (3) POST (a pkg.go.dev link on top, the CHANGELOG section,
+   `generate_release_notes`), read back (the tag, not a draft), peel the tag again. **Every
+   request has its own time limit**, 30 s, request to last byte (workspace best-practices 7.21).
+   Old tags get no page (owner: "only new tags will get release pages"). A task only the web UI
+   can do is an owner item, never "blocked on the CLI".
 7. 🔒 **Every Bun-version notation is the latest installed Bun** (owner, 2026-11-09; workspace
    Tooling rule 10, letter H31): `release.yml`'s `BUN_VERSION` + `BUN_SHA256` (both jobs read the
    one `env` pair) move together at the first session after the owner installs a newer Bun, with
