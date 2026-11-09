@@ -72,7 +72,7 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08); v0.3.1 (2026-11-09) changes only the release workflow
+## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08); v0.3.1 and v0.3.2 (2026-11-09) change only the release workflow
 
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
@@ -180,6 +180,17 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Release history
 
+- **v0.3.2 — published 2026-11-09** (owner: "update the project memory files, commit, push then
+  release"). No library change; the Release page is made in H32's order. `bump.ts patch` (floor
+  patch; v0.3.1's 20 tests green) → `26f668b` `release: v0.3.2`; annotated tag `v0.3.2` (object
+  `2dc0aa7`) → `26f668b`; `main` and the tag pushed, read back with `ls-remote`. CI run
+  42661227267 green in every step of both jobs: `checks` (with `bun test scripts/`) and `release`,
+  which checked out nothing and fetched the script alone at the commit. **First page in H32's
+  order: `v0.3.2`, `author.login` = `github-actions[bot]`**, 17:06:22Z, not a draft, not a
+  prerelease, with the pkg.go.dev link on top, the CHANGELOG section and GitHub's generated notes.
+  The tag still peels to `26f668b` (nothing created or moved). The Go proxy resolves v0.3.2 at
+  `26f668b`.
+
 - **v0.3.1 — published 2026-11-09** (owner: "update the project memory files, commit, push then
   release"). No library change; the release workflow's GitHub Release step runs on the REST API
   (H30). `bump.ts patch` (floor patch; Rule 3: v0.3.0's 20 tests green) → `e1bba28`
@@ -238,7 +249,8 @@ codegen is a future add (not required for SPEC §7 conformance).
     cases on a `Bun.serve` mock; inverted by five one-line mutants (no sha check, no missing-tag
     refusal, no existing-page stop, no second peel, no time limit), each catching only its own
     case. Real GitHub, read-only `--dry-run`: `v0.3.1` → "already exists, nothing to do"; at
-    v0.3.0's commit → refused; `v9.9.9` → refused. **UNMEASURED on GitHub until the next tag.**
+    v0.3.0's commit → refused; `v9.9.9` → refused. **MEASURED on GitHub with v0.3.2** (run
+    42661227267: page by `github-actions[bot]`, tag unchanged).
 
 ## Repo publishing decisions (2026-06-24)
 

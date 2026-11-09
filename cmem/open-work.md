@@ -4,9 +4,8 @@ Only open items; each points at its record. Status as of 2026-11-09.
 
 ## Owner actions
 
-None open. (2026-11-09, owner: "update the project memory files, commit, push then release": the
-H32 change is pushed, and **v0.3.2** is the release whose run measures it — overview § Release
-history.)
+None open. (2026-11-09: the H32 change is pushed and was measured by **v0.3.2** — run 42661227267
+made its page in H32's order; overview § Release history.)
 
 ## Waiting on others
 
