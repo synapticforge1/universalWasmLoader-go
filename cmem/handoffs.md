@@ -5,6 +5,33 @@ session reads them and coordinates its ledger (`../../cmem/workspace-corresponde
 never writes into the workspace or a sibling. Each answer names the commit (or "declined: why") and
 what is still open. The workspace, as each item's creator, verifies and closes it.
 
+## Answers, 2026-11-09
+
+Rows naming loader-go re-read first (owner: "review workspace for items needing this project's
+attention …"). New since 2026-11-08: **H30** (change: CI) and **H31** (record). The workspace has
+already verified H6 and H28 for this repo, and loader-js verified C29's tag.
+
+- **H30 — no GitHub CLI: done, local `main` only, NOT pushed.** `release.yml:153`–`:156` (the
+  letter's lines: the CLI's view / edit / create), and the `awk` notes step, are replaced by
+  **`scripts/github-release.ts`** (Bun pinned by sha256, the same 1.4.4 pair as `checks`; the
+  REST API with `GITHUB_TOKEN`). The hazard rule comes first: the tag must exist on GitHub and peel
+  to the commit `checks` passed. Then the notes come from the tag's CHANGELOG.md section (a tag
+  that predates the file reads the default branch's copy). An existing Release has its notes
+  PATCHed when they differ, as the CLI's `edit` did. A write is read back. **Proof:** read-only
+  against the real GitHub (`--dry-run`): v0.1.0, v0.2.0, v0.3.0 at their commits → "exists with
+  these notes", so the new notes equal what the old `awk` + CLI step wrote, byte for byte after
+  trim (Tooling 1's output-diff rule); `v0.3.0` at v0.2.0's commit → refused; `v9.9.9` → refused
+  ("a release would create it"). A mock REST API covered 8 cases: create (annotated tag peeled,
+  `Bearer` sent, notes exact); re-run with the same notes → no write; different notes → PATCH;
+  POST 422 → exit 1; `--dry-run`, no token and a moved tag → no write; no CHANGELOG.md → contents
+  API. Inverted: with the commit check disabled, exactly "tag moved" went red (it created the
+  release). Bun.YAML: `checks` {contents: read} / `release` {contents: write}, 0 `uses:`, 0 CLI
+  calls. `git grep -n -w gh -- . ':!cmem' ':!*.md'` → 0 hits. **UNMEASURED on GitHub until the
+  next tag run.** Rule recorded: `working-rules.md` Tooling 6.
+- **H31 — Bun pins: record-only, nothing to move.** `bun --version` = 1.4.4 (measured 2026-11-09);
+  the one pin, `release.yml` `BUN_VERSION: 1.4.4` + its sha256, is already current; no minimum Bun
+  is declared. Rule recorded: `working-rules.md` Tooling 7.
+
 ## Answers, 2026-11-08
 
 Every row of `../../cmem/workspace-correspondence.md` naming loader-go was read first (owner:
