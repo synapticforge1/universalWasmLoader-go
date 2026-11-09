@@ -9,8 +9,10 @@ name: release
 # - `checks` runs EVERYTHING that executes third-party code — `go test` runs wazero and
 #   golang.org/x/sys, the gate runs Bun — with a read-only token. The clone is tokenless, so no
 #   credential sits in .git/config.
-# - `release` runs on a fresh runner and executes only git, awk and `gh`; it is the only job with
-#   `contents: write`, and it first checks that the tag still points at the commit `checks` passed.
+# - `release` runs on a fresh runner and executes only git, the pinned Bun and this repo's
+#   `scripts/github-release.ts` (GitHub's REST API with GITHUB_TOKEN — no GitHub CLI, H30); it
+#   is the only job with `contents: write`, and it first checks that the tag still points at the
+#   commit `checks` passed. No dependency is installed there (the script uses only `node:` and fetch).
 #
 # No `uses:` steps at all: Go and Bun are installed from their official downloads, pinned by
 # version AND sha256, so no third-party action code runs and the Actions policy cannot block a
@@ -70,7 +72,9 @@ jobs:
       - name: Install Bun (pinned by sha256)
         run: |
           set -euo pipefail
-          curl -fsSL -o bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+          # Retries transient download failures (loader-rs met a 504 here, run 42567711837); the
+          # sha256 check still decides.
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
           echo "${BUN_SHA256}  bun.zip" | sha256sum -c -
           unzip -q bun.zip && mkdir -p "$HOME/.bun/bin" && mv bun-linux-x64/bun "$HOME/.bun/bin/" && rm -rf bun.zip bun-linux-x64
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
@@ -111,7 +115,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     permissions:
-      contents: write # only for `gh release create` / `edit`
+      contents: write # only for the Release write in scripts/github-release.ts
     steps:
       - name: Clone the tag (no token) and confirm it is the commit `checks` passed
         run: |
@@ -120,38 +124,31 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ needs.checks.outputs.commit }}" \
             || { echo "::error::tag $TAG moved after the checks ran"; exit 1; }
 
-      - name: Extract release notes from CHANGELOG.md
+      - name: Install Bun (pinned by sha256)
         run: |
           set -euo pipefail
-          # The tag may predate CHANGELOG.md (e.g. a backfilled v0.1.0). In that
-          # case pull the canonical CHANGELOG from the default branch.
-          if [ ! -f CHANGELOG.md ]; then
-            echo "CHANGELOG.md not present at $TAG; fetching from default branch."
-            git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
-            git show FETCH_HEAD:CHANGELOG.md > CHANGELOG.md
-          fi
-          # The heading is matched LITERALLY (index), not as a dynamic regex: gawk reads
-          # "\\[" in a dynamic regex as a bracket expression, mawk does not.
-          awk -v ver="$TAG" '
-            index($0, "## [" ver "]") == 1 { flag = 1; next }
-            flag && /^## \[/ { exit }
-            flag && /^\[[^]]+\]: / { next }
-            flag { print }
-          ' CHANGELOG.md > RELEASE_NOTES.md
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "No CHANGELOG.md section for $TAG; using a default note."
-            echo "Release $TAG." > RELEASE_NOTES.md
-          fi
-          echo "----- notes for $TAG -----"
-          cat RELEASE_NOTES.md
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+          echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum -c -
+          unzip -q -d "$RUNNER_TEMP" "$RUNNER_TEMP/bun.zip" && mkdir -p "$HOME/.bun/bin" && mv "$RUNNER_TEMP/bun-linux-x64/bun" "$HOME/.bun/bin/"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
-      - name: Create or update the GitHub Release
+      # The notes are the tag's CHANGELOG.md section (a tag that predates the file reads the default
+      # branch's copy); the script refuses unless the tag exists on GitHub and peels to the commit
+      # `checks` passed (POST /releases would otherwise CREATE a missing tag), and reads the
+      # Release back. An existing Release gets its notes updated, so a backfill re-run is safe.
+      - name: Create or update the GitHub Release (REST API)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ env.TAG }}
+          RELEASE_SHA: ${{ needs.checks.outputs.commit }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release edit "$TAG" --repo "${{ github.repository }}" --title "$TAG" --notes-file RELEASE_NOTES.md
-          else
-            gh release create "$TAG" --repo "${{ github.repository }}" --title "$TAG" --notes-file RELEASE_NOTES.md --verify-tag
+          script=scripts/github-release.ts
+          if [ ! -f "$script" ]; then
+            # A backfilled tag that predates the script: use the default branch's copy.
+            echo "::warning::$TAG predates scripts/github-release.ts; using the default branch's copy."
+            git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
+            script="$RUNNER_TEMP/github-release.ts"
+            git show FETCH_HEAD:scripts/github-release.ts > "$script"
           fi
+          bun "$script"
