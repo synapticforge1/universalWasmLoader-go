@@ -72,7 +72,7 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08); v0.3.1 and v0.3.2 (2026-11-09) change only the release workflow
+## Current state — SPEC 4.0.1 on `main` (2026-11-09; released: v0.3.2 at SPEC 4.0.0); SPEC 4.0.0 released as v0.3.0, v0.3.1 / v0.3.2 changed only the release workflow
 
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
@@ -128,9 +128,11 @@ codegen is a future add (not required for SPEC §7 conformance).
     one result of the WIT kind, or an interface). A callback returning `any` is checked BY VALUE
     when WASM calls it. Go has no Promise; a CHANNEL result is the analogue and is refused.
   - Cancellation is the `ctx` (§11.2). 🔒 **`LoadOptions.Timeout` zero = the 30 s default** —
-    owner, 2026-11-08, on the divergence from SPEC §11.1 ("zero … is an error"): *"adjust for
-    go"*. Go's zero-value convention wins in this port: `LoadOptions{}` is the default,
-    `NoTimeout` = no limit, a negative value is the error. Do not "fix" it to match the JS letter.
+    owner, 2026-11-08: *"adjust for go"*. Go's zero-value convention: `LoadOptions{}` is the
+    default, `NoTimeout` = no limit, a negative value is the error. **Since SPEC 4.0.1 (loader-js
+    `3a36d1e`, 2026-11-09) this is conformant, not a divergence:** §11.1's "Port allowance — a
+    zero-value options type" names loader-go and sets three conditions, all met (negative =
+    error; a named no-limit, never zero; documented). Do not "fix" it to refuse zero.
   - `CreateSingleton` / `NewInstancePool` load files only, so they take no options (§11.4 n/a — as
     -c and -dotnet).
   - Raw mode encodes / decodes by the export's WASM signature (`int32`/`int64`/`float32`/

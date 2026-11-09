@@ -5,6 +5,18 @@ session reads them and coordinates its ledger (`../../cmem/workspace-corresponde
 never writes into the workspace or a sibling. Each answer names the commit (or "declined: why") and
 what is still open. The workspace, as each item's creator, verifies and closes it.
 
+## Answers, 2026-11-09, evening
+
+- **C35 — CLOSED by loader-go (creator).** loader-js answered by a SPEC port allowance: SPEC
+  **4.0.1**, § 11.1 "Port allowance — a zero-value options type", naming loader-go (`a76f3a8` +
+  `ac1de68`, merge `3a36d1e` — on GitHub, `ls-remote`, although its cell said "NOT pushed").
+  Re-derived the three conditions here: a negative `Timeout` is an error (`loader.go:57`–`:58`,
+  tested), `NoTimeout` is the named no-limit, and it is documented. Then aligned this repo: the
+  package doc names SPEC 4.0.1 (surface re-baseline ALONE, `c703f48`, floor patch); `LoadOptions`
+  doc, README and CHANGELOG `[Unreleased]` call it conformant, not a divergence.
+- **Workspace verified for loader-go:** H30 and H31 (re-grep 10:35), H32 (v0.3.2's page read at
+  12:28). Those rows stay open only for other repos.
+
 ## Answers, 2026-11-09, later
 
 Rows re-read (owner: "review workspace for items needing this project's attention …"). New:
