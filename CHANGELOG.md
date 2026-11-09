@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**No change to the library**: the API, behaviour and SPEC level (4.0.0) are those of v0.3.0, and
+upgrading needs nothing. This release changes how releases are made.
+
+### Changed
+
+- The release workflow writes the GitHub Release through GitHub's REST API instead of the GitHub
+  CLI. It refuses unless the tag already exists and points at the commit the checks passed, and it
+  reads the Release back after writing it. The notes are still this file's section for the tag.
+
 ## [v0.3.0] - 2026-11-08
 
 Re-aligned to the cross-language **SPEC 4.0.0** — loud failures. Each item below refuses

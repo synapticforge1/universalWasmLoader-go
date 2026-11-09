@@ -72,7 +72,7 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08)
+## Current state — SPEC 4.0.0, RELEASED as v0.3.0 (2026-11-08); v0.3.1 (2026-11-09) changes only the release workflow
 
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is

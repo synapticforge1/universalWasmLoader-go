@@ -28,6 +28,11 @@ already verified H6 and H28 for this repo, and loader-js verified C29's tag.
   release). Bun.YAML: `checks` {contents: read} / `release` {contents: write}, 0 `uses:`, 0 CLI
   calls. `git grep -n -w gh -- . ':!cmem' ':!*.md'` → 0 hits. **UNMEASURED on GitHub until the
   next tag run.** Rule recorded: `working-rules.md` Tooling 6.
+- **H30, same day (owner: "update the project memory files, commit, push then release"):**
+  `c41d421`, `b094de3`, `34d9b38` and `2d1ff09` (header comments re-worded so the re-grep finds 0
+  hits) are pushed with this memory update; **v0.3.1** (a patch: floor patch, no library change)
+  is the first tag run of `scripts/github-release.ts` — its result is in overview § Release
+  history.
 - **H31 — Bun pins: record-only, nothing to move.** `bun --version` = 1.4.4 (measured 2026-11-09);
   the one pin, `release.yml` `BUN_VERSION: 1.4.4` + its sha256, is already current; no minimum Bun
   is declared. Rule recorded: `working-rules.md` Tooling 7.
