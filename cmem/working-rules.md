@@ -44,7 +44,8 @@ otherwise.
   refuses otherwise). Since 2026-11-09 `release` runs Bun + `scripts/github-release.ts` (REST API)
   instead of `awk` + the GitHub CLI (Tooling 6). Prove a change to it with
   `bun scripts/github-release.ts --dry-run` (read-only, real GitHub; needs `GITHUB_REPOSITORY`,
-  `RELEASE_TAG`, `RELEASE_SHA`). A changed workflow is proven only by its next tag run.
+  `RELEASE_TAG`, `RELEASE_SHA`). A changed workflow is proven only by its next tag run (this one
+  was, by v0.3.1's run 42638054957).
 - **The local gate is CI's gate:** `go build ./...` → `go vet ./...` → `go test -count=1 ./...` →
   `bun scripts/compat.ts`. Read every exit code; diff the counts below — a drop at exit 0 is a
   failure.

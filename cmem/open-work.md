@@ -4,8 +4,8 @@ Only open items; each points at its record. Status as of 2026-11-09.
 
 ## Owner actions
 
-None open. (2026-11-09, owner: "update the project memory files, commit, push then release" — the
-H30 change is pushed and v0.3.1 is the release that measures it; see overview § Release history.)
+None open. (2026-11-09: the H30 change is pushed and was measured by the v0.3.1 release — run
+42638054957 created the GitHub Release through the REST API; overview § Release history.)
 
 ## Waiting on others
 

@@ -180,6 +180,16 @@ codegen is a future add (not required for SPEC §7 conformance).
 
 ## Release history
 
+- **v0.3.1 — published 2026-11-09** (owner: "update the project memory files, commit, push then
+  release"). No library change; the release workflow's GitHub Release step runs on the REST API
+  (H30). `bump.ts patch` (floor patch; Rule 3: v0.3.0's 20 tests green) → `e1bba28`
+  `release: v0.3.1`; annotated tag `v0.3.1` (object `ac39bc6`) → `e1bba28`; `main` and the tag
+  pushed, read back with `ls-remote`. CI run 42638054957 green in both jobs. **The first tag run
+  of `scripts/github-release.ts`: it created GitHub Release `v0.3.1`** (by `github-actions[bot]`,
+  14:47:40Z, not a draft, the CHANGELOG notes), and the tag still peels to `e1bba28` (nothing
+  created or moved). `go list -m …@v0.3.1` through `proxy.golang.org` resolves it at `e1bba28`
+  (its `@v/list` page was still cached without it when read).
+
 - **v0.3.0 — published 2026-11-08** (owner: "yes release 0.3.0"). SPEC 4.0.0. `bump.ts minor`
   (Rule 6) → `faf46bb` `release: v0.3.0`; annotated tag `v0.3.0` (object `b128bb4`) → `faf46bb`;
   `main` and the tag pushed, read back with `ls-remote`. CI run 42508941015, the first of the
@@ -214,7 +224,8 @@ codegen is a future add (not required for SPEC §7 conformance).
     Proven read-only against the real GitHub: v0.1.0 / v0.2.0 / v0.3.0 → "exists with these
     notes" (the new notes equal the bodies the old step wrote), a wrong commit and an absent tag
     refused. A mock API covered the write paths (8 cases; a mutant with the commit check skipped
-    turned exactly "tag moved" red). **UNMEASURED on GitHub until the next tag run.**
+    turned exactly "tag moved" red). **MEASURED on GitHub with v0.3.1** (run 42638054957: Release
+    created, tag unchanged).
 
 ## Repo publishing decisions (2026-06-24)
 
