@@ -4,9 +4,8 @@ Only open items; each points at its record. Status as of 2026-11-09.
 
 ## Owner actions
 
-1. **Push the SPEC 4.0.1 alignment** (surface re-baseline `c703f48`, then the wording in
-   `loader.go`, README, CHANGELOG `[Unreleased]` and memory) — local `main` only; the push, and
-   whether to release it as v0.3.3 (a patch: no behaviour change), are the owner's.
+None open. (2026-11-09, owner: "update the project memory files, commit, push then release": the
+SPEC 4.0.1 alignment is pushed and released as **v0.3.3** — overview § Release history.)
 
 ## Waiting on others
 
