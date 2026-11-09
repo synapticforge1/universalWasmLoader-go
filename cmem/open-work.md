@@ -4,10 +4,9 @@ Only open items; each points at its record. Status as of 2026-11-09.
 
 ## Owner actions
 
-1. **Push the H32 change** (`release.yml` + `scripts/github-release.ts` + its tests, in H32's
-   order) — on local `main` only; the push is the owner's.
-2. **Its first real measurement is the next tag** (no release is planned for it alone): read that
-   run's `release` job and the new page's `author.login`, and write them into the H32 cell.
+None open. (2026-11-09, owner: "update the project memory files, commit, push then release": the
+H32 change is pushed, and **v0.3.2** is the release whose run measures it — overview § Release
+history.)
 
 ## Waiting on others
 

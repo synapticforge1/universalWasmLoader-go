@@ -21,6 +21,8 @@ it made best-practices **7.21**, a time limit on every network fetch in a script
   `scripts/github-release.test.ts` (12 cases, run in `checks`); five mutants each caught only by
   their own case. Real-GitHub dry runs as recorded in overview § the release workflow history.
   **First page by the new order: the next tag** (its `author.login` goes into the H32 cell).
+  **Same day (owner: "update the project memory files, commit, push then release"):** pushed;
+  **v0.3.2** is that tag — its result is in overview § Release history.
 - **C35 (this repo's row) — the workspace's half verified, NOT closed.** Re-derived: H15, H22, H25,
   H29 are `closed`; `projects.md:86` carries loader-go at v0.3.1. Missing: loader-js (also an
   addressee) has not recorded the owner's §11.1 ruling for Go (zero = the default) — no hit in
