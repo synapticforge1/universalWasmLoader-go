@@ -193,8 +193,8 @@ codegen is a future add (not required for SPEC §7 conformance).
   warmed (`proxy.golang.org` serves it); pkg.go.dev indexes within minutes. `CHANGELOG.md` (Keep a
   Changelog format) added at repo root.
 - **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24; fires
-  on any `v*` tag push; `workflow_dispatch` backfills an old tag, idempotently). The local machine
-  has no `gh`, which is why CI does this. Its history:
+  on any `v*` tag push; `workflow_dispatch` backfills an old tag, idempotently). The GitHub CLI is
+  not used anywhere, CI included (owner, 2026-11-08; working-rules Tooling 6). Its history:
   - 2026-06-24: one job — build, then the Release from the tag's `CHANGELOG.md` section.
   - 2026-10-26: `go vet` + `go test` gate added (a backfill of a tag that predates `tests/` skips
     them with a `::warning::`; a tag push never does).
@@ -206,6 +206,15 @@ codegen is a future add (not required for SPEC §7 conformance).
     (`GO_VERSION` must equal `go.mod`'s `go` line). `12e3fb4`: the notes heading is matched
     literally (`index`), since gawk reads the old dynamic regex as a bracket expression.
     First run: v0.3.0's, 42508941015, green.
+  - **2026-11-09 (workspace H30, no GitHub CLI): the `release` job runs `scripts/github-release.ts`**
+    (Bun pinned by sha256, downloads retried; GitHub's REST API with `GITHUB_TOKEN`) in place of
+    the `awk` notes step and the CLI's view / edit / create. The tag must exist and peel to the
+    commit `checks` passed; an existing Release gets its notes updated (as the CLI's edit did); a
+    write is read back. A backfilled tag that predates the script uses the default branch's copy.
+    Proven read-only against the real GitHub: v0.1.0 / v0.2.0 / v0.3.0 → "exists with these
+    notes" (the new notes equal the bodies the old step wrote), a wrong commit and an absent tag
+    refused. A mock API covered the write paths (8 cases; a mutant with the commit check skipped
+    turned exactly "tag moved" red). **UNMEASURED on GitHub until the next tag run.**
 
 ## Repo publishing decisions (2026-06-24)
 
