@@ -1,6 +1,6 @@
 /**
  * Create (or update) the GitHub Release for a tag through GitHub's REST API — never the GitHub CLI
- * (workspace letter H30; owner, 2026-11-08: no `gh`, in CI too). Run by `.github/workflows/
+ * (workspace letter H30; owner, 2026-11-08: no GitHub CLI, in CI too). Run by `.github/workflows/
  * release.yml`'s `release` job from the tag's clone:
  *
  *   bun scripts/github-release.ts            # create the Release, or update its notes
@@ -20,7 +20,7 @@
  *   2. The notes: the tag's `## [<tag>]` section of CHANGELOG.md (read from the working directory;
  *      a tag that predates the file reads the default branch's copy through the API); a default
  *      line when there is no section. The heading is matched literally.
- *   3. A Release for the tag exists → PATCH its title / notes when they differ (as `gh release edit`
+ *   3. A Release for the tag exists → PATCH its title / notes when they differ (as the CLI's edit
  *      did; a re-run is safe). Otherwise POST it. Either way, read it back.
  *
  * `node:` builtins and `fetch` only.
