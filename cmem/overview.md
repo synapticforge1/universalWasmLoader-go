@@ -72,7 +72,7 @@ consistency)" note after a head-to-head benchmark on this machine (Go 1.26, Wind
 The `wasmtime-go` import path was also spiked and **does** build here (CGO + mingw gcc, `add(3,4)=7`),
 so the reversal is on merits, not feasibility.
 
-## Current state — SPEC 4.0.1 on `main` (2026-11-09; released: v0.3.2 at SPEC 4.0.0); SPEC 4.0.0 released as v0.3.0, v0.3.1 / v0.3.2 changed only the release workflow
+## Current state — SPEC 4.0.1, RELEASED as v0.3.3 (2026-11-09); SPEC 4.0.0 behaviour since v0.3.0 (v0.3.1 / v0.3.2 changed only the release workflow)
 
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
@@ -181,6 +181,14 @@ codegen is a future add (not required for SPEC §7 conformance).
   resolve immediately and queue pkg.go.dev indexing. (v0.1.0 was warmed at the old `jrmarcum` path.)
 
 ## Release history
+
+- **v0.3.3 — published 2026-11-09** (owner: "update the project memory files, commit, push then
+  release"). SPEC 4.0.1 (loader-js's §11.1 port allowance for Go's zero-value `LoadOptions`; ledger
+  C35, closed); no behaviour change. `bump.ts patch` (floor patch: `SPEC 4.0.0 -> 4.0.1`; v0.3.2's
+  20 tests green) → `805401e` `release: v0.3.3`; annotated tag `v0.3.3` (object `1daff89`) →
+  `805401e`; `main` and the tag pushed, read back with `ls-remote`. CI run 42666702412 green (18
+  job / step conclusions, all success). Page `v0.3.3` by `github-actions[bot]`, 17:39:44Z, not a
+  draft, not a prerelease; the tag still peels to `805401e`. The Go proxy resolves v0.3.3.
 
 - **v0.3.2 — published 2026-11-09** (owner: "update the project memory files, commit, push then
   release"). No library change; the Release page is made in H32's order. `bump.ts patch` (floor

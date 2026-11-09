@@ -16,6 +16,9 @@ what is still open. The workspace, as each item's creator, verifies and closes i
   doc, README and CHANGELOG `[Unreleased]` call it conformant, not a divergence.
 - **Workspace verified for loader-go:** H30 and H31 (re-grep 10:35), H32 (v0.3.2's page read at
   12:28). Those rows stay open only for other repos.
+- **Released as v0.3.3** (owner: "update the project memory files, commit, push then release"):
+  SPEC 4.0.1 declared; tag `v0.3.3` → `805401e`; run 42666702412 green; page by
+  `github-actions[bot]`. Detail: overview § Release history.
 
 ## Answers, 2026-11-09, later
 
