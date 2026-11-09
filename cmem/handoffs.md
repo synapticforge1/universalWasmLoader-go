@@ -5,6 +5,27 @@ session reads them and coordinates its ledger (`../../cmem/workspace-corresponde
 never writes into the workspace or a sibling. Each answer names the commit (or "declined: why") and
 what is still open. The workspace, as each item's creator, verifies and closes it.
 
+## Answers, 2026-11-09, later
+
+Rows re-read (owner: "review workspace for items needing this project's attention …"). New:
+**H32** (every tagged release's page made by CI, in one order; loader-go is NOT on its change list,
+but -dotnet's check against the recipe showed the same kind of gaps here), **C40** (closed;
+it made best-practices **7.21**, a time limit on every network fetch in a script), **C41**
+(loader-py's survey: "-go 4/4/4", every page by `github-actions[bot]`).
+
+- **H32 — checked against the recipe; four gaps, fixed (local `main`, NOT pushed).** (2) an
+  existing page was PATCHed — now done with no write; 7.21 — no time limit per request — now
+  30 s each, request to last byte; (3) no second peel and no "not a draft" check — both added;
+  C30 / H32 — the `release` job cloned the tag — it now fetches the script alone at `github.sha`.
+  `workflow_dispatch` removed (no backfill, owner). Tests committed:
+  `scripts/github-release.test.ts` (12 cases, run in `checks`); five mutants each caught only by
+  their own case. Real-GitHub dry runs as recorded in overview § the release workflow history.
+  **First page by the new order: the next tag** (its `author.login` goes into the H32 cell).
+- **C35 (this repo's row) — the workspace's half verified, NOT closed.** Re-derived: H15, H22, H25,
+  H29 are `closed`; `projects.md:86` carries loader-go at v0.3.1. Missing: loader-js (also an
+  addressee) has not recorded the owner's §11.1 ruling for Go (zero = the default) — no hit in
+  `-js/cmem/` or `SPEC.md`. C35 stays open for that one acknowledgement.
+
 ## Answers, 2026-11-09
 
 Rows naming loader-go re-read first (owner: "review workspace for items needing this project's

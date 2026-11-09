@@ -1,18 +1,19 @@
 name: release
 
-# Publishes a GitHub Release whenever a semver tag is pushed. A Go module needs no registry
-# upload: the pushed tag IS the release (proxy.golang.org serves it); this workflow gates it and
-# writes the Release notes. Manual runs (workflow_dispatch) backfill a tag pushed before this
-# workflow existed.
+# Runs on every pushed `v*` tag. A Go module needs no registry upload: the pushed tag IS the
+# release (proxy.golang.org serves it). This workflow gates the tag, then makes its GitHub Release
+# page — from CI, never by hand (workspace letter H32). Only NEW tags get pages (owner,
+# 2026-11-09: "only new tags will get release pages"), so there is no manual backfill trigger.
 #
 # Two jobs, on purpose (workspace C30; owner, 2026-11-08: "split the release workflow"):
 # - `checks` runs EVERYTHING that executes third-party code — `go test` runs wazero and
-#   golang.org/x/sys, the gate runs Bun — with a read-only token. The clone is tokenless, so no
-#   credential sits in .git/config.
-# - `release` runs on a fresh runner and executes only git, the pinned Bun and this repo's
-#   `scripts/github-release.ts` (GitHub's REST API with GITHUB_TOKEN — no GitHub CLI, H30); it
-#   is the only job with `contents: write`, and it first checks that the tag still points at the
-#   commit `checks` passed. No dependency is installed there (the script uses only `node:` and fetch).
+#   golang.org/x/sys, the gate and the script tests run Bun — with a read-only token. The clone
+#   is tokenless, so no credential sits in .git/config.
+# - `release` is the only job with `contents: write`. It checks out NOTHING: it installs the
+#   pinned Bun, fetches `scripts/github-release.ts` alone at the tagged commit, and runs it
+#   (GitHub's REST API with GITHUB_TOKEN — no GitHub CLI, H30). The script keeps H32's order:
+#   the tag exists and peels to the commit `checks` passed; a page already there is done; then
+#   POST, read back, peel again. Every request has a 30 s limit (best-practices 7.21).
 #
 # No `uses:` steps at all: Go and Bun are installed from their official downloads, pinned by
 # version AND sha256, so no third-party action code runs and the Actions policy cannot block a
@@ -23,17 +24,12 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing tag to release (e.g. v0.1.0)'
-        required: true
 
 permissions:
   contents: read
 
 env:
-  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  TAG: ${{ github.ref_name }}
   GO_VERSION: 1.26.4
   GO_SHA256: 1153d3d50e0ac764b447adfe05c2bcf08e889d42a02e0fe0259bd47f6733ad7f
   BUN_VERSION: 1.4.4
@@ -44,28 +40,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    outputs:
-      commit: ${{ steps.clone.outputs.commit }}
     steps:
       - name: Clone the tag (full history for the gate; no token)
-        id: clone
         run: |
           set -euo pipefail
           git clone --branch "$TAG" "https://github.com/${{ github.repository }}" .
           commit="$(git rev-parse HEAD)"
-          if [ "${{ github.event_name }}" = "push" ] && [ "$commit" != "${{ github.sha }}" ]; then
-            echo "::error::tag $TAG no longer points at ${{ github.sha }} (now $commit)"; exit 1
-          fi
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          [ "$commit" = "${{ github.sha }}" ] || { echo "::error::tag $TAG no longer points at ${{ github.sha }} (now $commit)"; exit 1; }
 
       - name: Install Go (pinned by sha256)
         run: |
           set -euo pipefail
           mod="$(sed -n 's/^go \([0-9.]*\)$/\1/p' go.mod)"
           [ "$mod" = "$GO_VERSION" ] || { echo "::error::go.mod says go $mod; the workflow pins $GO_VERSION — move GO_VERSION and GO_SHA256 together"; exit 1; }
-          curl -fsSL -o go.tgz "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-          echo "${GO_SHA256}  go.tgz" | sha256sum -c -
-          sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go.tgz && rm go.tgz
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --max-time 300 -o "$RUNNER_TEMP/go.tgz" "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+          echo "${GO_SHA256}  $RUNNER_TEMP/go.tgz" | sha256sum -c -
+          sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "$RUNNER_TEMP/go.tgz"
           echo "/usr/local/go/bin" >> "$GITHUB_PATH"
           echo "GOTOOLCHAIN=local" >> "$GITHUB_ENV"
 
@@ -74,9 +64,9 @@ jobs:
           set -euo pipefail
           # Retries transient download failures (loader-rs met a 504 here, run 42567711837); the
           # sha256 check still decides.
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
-          echo "${BUN_SHA256}  bun.zip" | sha256sum -c -
-          unzip -q bun.zip && mkdir -p "$HOME/.bun/bin" && mv bun-linux-x64/bun "$HOME/.bun/bin/" && rm -rf bun.zip bun-linux-x64
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --max-time 300 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+          echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum -c -
+          unzip -q -d "$RUNNER_TEMP" "$RUNNER_TEMP/bun.zip" && mkdir -p "$HOME/.bun/bin" && mv "$RUNNER_TEMP/bun-linux-x64/bun" "$HOME/.bun/bin/"
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
       - name: Versions
@@ -89,66 +79,45 @@ jobs:
         run: go vet ./...
 
       # Release gate: the SPEC fixture suite (tests/ = loader-js's stamped set) and the API
-      # surface snapshot. Tags before the fixtures were tracked have no tests/; only a manual
-      # backfill of such a tag may skip, and it says so. A tag push always tests.
+      # surface snapshot.
       - name: Test
-        run: |
-          if [ ! -f tests/fixtures.json ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "::warning::$TAG predates the tracked fixtures (tests/); test suite skipped for this backfill."
-            exit 0
-          fi
-          go test -count=1 ./...
+        run: go test -count=1 ./...
+
+      # The release-page script's own tests (a mock GitHub API; H32's order, the time limit).
+      - name: Test the release-page script
+        run: bun test scripts/
 
       # The compatibility gate (workspace layout-and-packaging.md Rules 2, 3, 6): the step from
       # the previous tag must meet the API-surface / SPEC floor, and the previous tag's tests
-      # must pass for a compatible step. Tags before the gate existed have no scripts/compat.ts;
-      # only a manual backfill of such a tag may skip, and it says so.
+      # must pass for a compatible step.
       - name: Compatibility gate
-        run: |
-          if [ ! -f scripts/compat.ts ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "::warning::$TAG predates the compatibility gate (scripts/compat.ts); gate skipped for this backfill."
-            exit 0
-          fi
-          bun scripts/compat.ts --release "$TAG"
+        run: bun scripts/compat.ts --release "$TAG"
 
   release:
     needs: checks
     runs-on: ubuntu-latest
     permissions:
-      contents: write # only for the Release write in scripts/github-release.ts
+      contents: write # only for the POST in scripts/github-release.ts
     steps:
-      - name: Clone the tag (no token) and confirm it is the commit `checks` passed
-        run: |
-          set -euo pipefail
-          git clone --depth 1 --branch "$TAG" "https://github.com/${{ github.repository }}" .
-          test "$(git rev-parse HEAD)" = "${{ needs.checks.outputs.commit }}" \
-            || { echo "::error::tag $TAG moved after the checks ran"; exit 1; }
-
       - name: Install Bun (pinned by sha256)
         run: |
           set -euo pipefail
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --max-time 300 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
           echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum -c -
           unzip -q -d "$RUNNER_TEMP" "$RUNNER_TEMP/bun.zip" && mkdir -p "$HOME/.bun/bin" && mv "$RUNNER_TEMP/bun-linux-x64/bun" "$HOME/.bun/bin/"
           echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
-      # The notes are the tag's CHANGELOG.md section (a tag that predates the file reads the default
-      # branch's copy); the script refuses unless the tag exists on GitHub and peels to the commit
-      # `checks` passed (POST /releases would otherwise CREATE a missing tag), and reads the
-      # Release back. An existing Release gets its notes updated, so a backfill re-run is safe.
-      - name: Create or update the GitHub Release (REST API)
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ env.TAG }}
-          RELEASE_SHA: ${{ needs.checks.outputs.commit }}
+      # The script alone, at the tagged commit — no checkout, so no package code beside the token.
+      - name: Fetch the release-page script at the tagged commit
         run: |
           set -euo pipefail
-          script=scripts/github-release.ts
-          if [ ! -f "$script" ]; then
-            # A backfilled tag that predates the script: use the default branch's copy.
-            echo "::warning::$TAG predates scripts/github-release.ts; using the default branch's copy."
-            git fetch --depth=1 origin "${{ github.event.repository.default_branch }}"
-            script="$RUNNER_TEMP/github-release.ts"
-            git show FETCH_HEAD:scripts/github-release.ts > "$script"
-          fi
-          bun "$script"
+          curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 --max-time 60 -o "$RUNNER_TEMP/github-release.ts" \
+            "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/github-release.ts"
+
+      - name: Create the GitHub Release page (REST API)
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: bun github-release.ts

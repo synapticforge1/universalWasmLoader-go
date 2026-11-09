@@ -203,7 +203,8 @@ codegen is a future add (not required for SPEC §7 conformance).
   warmed (`proxy.golang.org` serves it); pkg.go.dev indexes within minutes. `CHANGELOG.md` (Keep a
   Changelog format) added at repo root.
 - **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24; fires
-  on any `v*` tag push; `workflow_dispatch` backfills an old tag, idempotently). The GitHub CLI is
+  on any `v*` tag push; since 2026-11-09 there is no `workflow_dispatch` — only new tags get pages,
+  owner). The GitHub CLI is
   not used anywhere, CI included (owner, 2026-11-08; working-rules Tooling 6). Its history:
   - 2026-06-24: one job — build, then the Release from the tag's `CHANGELOG.md` section.
   - 2026-10-26: `go vet` + `go test` gate added (a backfill of a tag that predates `tests/` skips
@@ -226,6 +227,18 @@ codegen is a future add (not required for SPEC §7 conformance).
     refused. A mock API covered the write paths (8 cases; a mutant with the commit check skipped
     turned exactly "tag moved" red). **MEASURED on GitHub with v0.3.1** (run 42638054957: Release
     created, tag unchanged).
+  - **2026-11-09, later (workspace H32 + best-practices 7.21): brought to H32's order.** Four
+    gaps against the recipe closed: an existing page is now done with NO write (it was PATCHed);
+    every request has a 30 s limit, request to last byte (there was none); the tag is peeled
+    again after the POST and the read-back checks "not a draft"; the `release` job checks out
+    nothing (it cloned the tag) — it fetches the script alone at `github.sha`. The body is a
+    pkg.go.dev link on top, then the CHANGELOG section read at the commit, with
+    `generate_release_notes`. `workflow_dispatch` (the backfill path) is gone: only new tags get
+    pages (owner). `checks` now runs `bun test scripts/` — `scripts/github-release.test.ts`, 12
+    cases on a `Bun.serve` mock; inverted by five one-line mutants (no sha check, no missing-tag
+    refusal, no existing-page stop, no second peel, no time limit), each catching only its own
+    case. Real GitHub, read-only `--dry-run`: `v0.3.1` → "already exists, nothing to do"; at
+    v0.3.0's commit → refused; `v9.9.9` → refused. **UNMEASURED on GitHub until the next tag.**
 
 ## Repo publishing decisions (2026-06-24)
 
