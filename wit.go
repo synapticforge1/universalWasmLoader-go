@@ -13,8 +13,8 @@
 // Preview 1 is provided by wazero's built-in shim (SPEC §10), so I/O-using
 // libraries instantiate with zero configuration; pure-compute modules need nothing.
 //
-// Conforms to the cross-language SPEC.md v4.0.0 (Canonical ABI, callee-allocated
-// string returns + cabi_post_<name>).
+// Conforms to the cross-language SPEC.md v4.0.1 (Canonical ABI, callee-allocated
+// string returns + cabi_post_<name>; §11.1's zero-value options allowance).
 //
 // [wazero]: https://github.com/tetratelabs/wazero
 package wasmloader
