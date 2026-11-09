@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**No change to the library's behaviour.**
+
+### Changed
+
+- Conforms to SPEC **4.0.1**, a clarification: its §11.1 now allows what this loader has done since
+  v0.3.0 — `LoadOptions{}` (a zero `Timeout`) means the 30 s default, a negative `Timeout` is an
+  error, and `NoTimeout` turns the limit off. The README and the `LoadOptions` docs say so.
+
 ## [v0.3.2] - 2026-11-09
 
 **No change to the library.**

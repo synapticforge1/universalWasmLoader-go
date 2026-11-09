@@ -1,5 +1,5 @@
 module: github.com/synapticforge1/universalWasmLoader-go
-spec: 4.0.0
+spec: 4.0.1
 const DefaultTimeout = 30 * time.Second
 const NoTimeout time.Duration = math.MaxInt64
 field LoadOptions.Timeout time.Duration

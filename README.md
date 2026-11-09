@@ -9,7 +9,7 @@ direct, strings encoded/decoded through linear memory, booleans normalized).
   works: no C toolchain, no native `libwasmtime` to ship, trivial cross-compilation.
 - **WASI Preview 1 built in** (SPEC §10) — I/O-using libraries (`console.log` → `fd_write`)
   instantiate with zero config; pure-compute modules need nothing.
-- Conforms to the cross-language **SPEC.md v4.0.0** (Canonical ABI, callee-allocated string returns +
+- Conforms to the cross-language **SPEC.md v4.0.1** (Canonical ABI, callee-allocated string returns +
   `cabi_post_<name>`; loud failures — see below).
 
 ### ⚠️ Breaking Changes
@@ -122,6 +122,9 @@ m, err := wasmloader.Import(ctx, "https://example.com/math.wasm")
 m, err = wasmloader.ImportWithOptions(ctx, "https://example.com/math.wasm", nil,
 	wasmloader.LoadOptions{Timeout: 5 * time.Second})
 ```
+
+`LoadOptions{}` (a zero `Timeout`) means the 30 s default, a negative `Timeout` is an error, and
+`NoTimeout` turns the limit off — Go's zero-value convention, which SPEC 4.0.1 §11.1 allows.
 
 An HTTP error is an error naming the status and URL. A `.wit` answering 404 or 410 means "no `.wit`"
 (raw exports); any other status, a network error or the time limit fails the load. The `.wasm` URL's
