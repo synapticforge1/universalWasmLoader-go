@@ -15,6 +15,14 @@ with the next free number; numbers are never reused.
   the whole inversion run (2026-11-08); the test now fails after 5 s, and its unblocking cleanup is
   registered AFTER the server's so LIFO order runs it first. [universal-wasm-loader-go]
 
+- **L3 Never ask a caching registry for a version before it exists — it caches the MISS.** The
+  release guard "the proxy does not serve vX.Y.Z yet" requested `@v/v0.3.4.info` before CI had
+  tagged it; proxy.golang.org cached the "unknown revision" 404, and CI's read-back of the real
+  release timed out on that cached answer while `@v/list` already listed v0.3.4 (2026-11-10, run
+  42892298910). Guard with the version LIST; read the version itself only after it exists. The
+  rehearsal's mock proxy answered fresh every time, so it could not see this — a mock is only as
+  strict as the cache it leaves out. [universal-wasm-loader-go]
+
 ## ★ The workspace's convergent rules — a COPY, stamped 2026-11-08 (workspace letters H6, H24, H27)
 
 **Copied from synapticforge1/cmem/best-practices.md on 2026-11-08** (the stamp wording

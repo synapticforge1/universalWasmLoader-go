@@ -260,7 +260,13 @@ if (cmd === "proxy") {
     info = await http(`${goproxy}/${esc}/@v/${tag}.info`);
     if (info.status === 200) break;
     if (info.status !== 404 && info.status !== 410) fail(`GET ${tag}.info: HTTP ${info.status} ${info.text.slice(0, 200)}`);
-    if (Date.now() + pollMs > deadline) fail(`the proxy does not serve ${MODULE}@${tag} after ${waitMs} ms (HTTP ${info.status}, ${attempt} tries)`);
+    if (Date.now() + pollMs > deadline) {
+      fail(
+        `the proxy does not serve ${MODULE}@${tag} after ${waitMs} ms (HTTP ${info.status}, ${attempt} tries: ${info.text.trim().slice(0, 160)}). ` +
+          `If it says "unknown revision", someone asked for ${tag} before its tag existed and the proxy cached the miss: ` +
+          `"Re-run failed jobs" once it serves the version (U12) — the tag and the page are already done.`,
+      );
+    }
     console.log(`proxy: ${tag} not served yet (HTTP ${info.status}); retrying in ${pollMs} ms`);
     await Bun.sleep(pollMs);
   }

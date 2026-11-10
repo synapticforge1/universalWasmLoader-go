@@ -4,10 +4,9 @@ Only open items; each points at its record. Status as of 2026-11-10.
 
 ## Owner actions
 
-1. **The release path of the H33 order is measured at the next "release"** (owner, 2026-11-10:
-   "push then release"; the level is the owner's): `bun scripts/bump.ts <level>`, then
-   `bun scripts/release.ts`; CI checks, tags, makes the page and reads the proxy. Record the run's
-   four jobs in [release.md](release.md) § Release History.
+None open. (2026-11-10, owner: "push and release": the guard fix `3045f67` lands on `main` with
+this push, and the release after it is the first whose local guard asks the proxy only for
+`@v/list` — [release.md](release.md).)
 
 ## Waiting on others
 

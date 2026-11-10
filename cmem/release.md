@@ -77,10 +77,35 @@ release in this order.**
 - **2026-11-10 (H33, owner's order): CI tags.** Triggered by pushes of `main`; `checks` → `tag`
   → `release` → `publish` in one run; `scripts/ci-release.ts` (state / tag / page / proxy) replaced
   `github-release.ts`; `scripts/release.ts` (local, pushes `main` only); `bump.ts` commits the bump.
+  First run v0.3.4 (42892298910): checks, tag and page green; the proxy read-back failed on a miss
+  the local guard had made the proxy cache. `3045f67`: the guard reads `@v/list`, never `.info`.
 
 ## Release History
 
 Newest first. Each: what changed, then how it was released and read back.
+
+### v0.3.4 — 2026-11-10
+
+**What changed:** no library change. Releases run in the owner's order — the maintainer's script
+pushes `main` only; CI checks the commit, then creates the tag, then the Release page from the tag,
+then reads the Go proxy and sum.golang.org back (workspace letter H33).
+**Release — the first in this order:** owner: "push then release", level patch. The push of
+`9dcf277` (run 42892127682) measured the non-release path: `checks` green, `tag` / `release`
+skipped. `bump.ts patch` (floor patch; v0.3.3's 20 tests green) committed `ce6698f` `bump to
+v0.3.4`; `release.ts` pushed `main` only (no tag). **Run 42892298910:** `checks` green ("Is this a
+release?" → new) → `tag` 20:09:08–10Z made the annotated `v0.3.4` (object `e649501`, **tagger
+`github-actions[bot]`**) on `ce6698f` → `release` 20:09:17–19Z made the page (by
+`github-actions[bot]`, not a draft) → **`publish` FAILED** at 20:14:11Z: the read-back waited its
+5 minutes on a CACHED 404 for `@v/v0.3.4.info` ("unknown revision v0.3.4"), while `@v/list`
+already listed v0.3.4. Cause: `release.ts`'s own guard had requested that `.info` before the tag
+existed (best-practices L3); fixed in `3045f67` (the guard reads `@v/list`; re-rehearsed: no
+`.info` request). **The proxy served v0.3.4 at 20:41Z** (polled every 5 min: 404 until 20:36Z,
+then 200 — the cached miss lasted about 30 min): `.info` `Origin.Hash` = `ce6698f`, `Ref` =
+`refs/tags/v0.3.4`; sum.golang.org `h1:eLDAZJDgHYVEV9Gf+WkGuUl5glPGCC25Yj0xJkK8+t4=`; CI's own
+`ci-release.ts proxy` run locally → exit 0. **Re-run (U12), owner, web UI:** attempt 2 of run
+42892298910, 21:17:11Z — only `publish` ran (21:17:17–22Z, green: the proxy read-back and the
+checksum-verified download); `checks` / `tag` / `release` kept attempt 1's success. **The run is
+green; v0.3.4 is complete**, and the re-run path is measured.
 
 ### v0.3.3 — 2026-11-09
 
