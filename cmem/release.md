@@ -102,8 +102,10 @@ existed (best-practices L3); fixed in `3045f67` (the guard reads `@v/list`; re-r
 `.info` request). **The proxy served v0.3.4 at 20:41Z** (polled every 5 min: 404 until 20:36Z,
 then 200 — the cached miss lasted about 30 min): `.info` `Origin.Hash` = `ce6698f`, `Ref` =
 `refs/tags/v0.3.4`; sum.golang.org `h1:eLDAZJDgHYVEV9Gf+WkGuUl5glPGCC25Yj0xJkK8+t4=`; CI's own
-`ci-release.ts proxy` run locally → exit 0. **Open:** "Re-run failed jobs" on 42892298910 (owner,
-web UI; U12) so CI's record is green too — the tag and the page are done and are skipped.
+`ci-release.ts proxy` run locally → exit 0. **Re-run (U12), owner, web UI:** attempt 2 of run
+42892298910, 21:17:11Z — only `publish` ran (21:17:17–22Z, green: the proxy read-back and the
+checksum-verified download); `checks` / `tag` / `release` kept attempt 1's success. **The run is
+green; v0.3.4 is complete**, and the re-run path is measured.
 
 ### v0.3.3 — 2026-11-09
 
