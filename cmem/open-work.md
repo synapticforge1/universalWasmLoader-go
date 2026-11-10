@@ -4,10 +4,13 @@ Only open items; each points at its record. Status as of 2026-11-10.
 
 ## Owner actions
 
-1. **The release path of the H33 order is measured at the next "release"** (owner, 2026-11-10:
-   "push then release"; the level is the owner's): `bun scripts/bump.ts <level>`, then
-   `bun scripts/release.ts`; CI checks, tags, makes the page and reads the proxy. Record the run's
-   four jobs in [release.md](release.md) § Release History.
+1. **"Re-run failed jobs" on run 42892298910** (GitHub web UI: Actions → that run) once
+   proxy.golang.org serves `@v/v0.3.4.info` (it answered a cached "unknown revision" 404 —
+   [release.md](release.md) § v0.3.4). Only `publish` re-runs; the tag and the page are done.
+   Record its result in release.md.
+2. **The fix `3045f67` is on the branch `fix-proxy-guard`, not on `main`** (the guard reads the
+   proxy's `@v/list`, never `.info`). It must land ("push") before the NEXT release, so no guard
+   poisons the proxy again; not during this one.
 
 ## Waiting on others
 
