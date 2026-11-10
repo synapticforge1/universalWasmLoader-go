@@ -61,16 +61,21 @@ if (top !== tag) blocked(`CHANGELOG.md's top version is ${top ?? "(none)"}, the 
 if (git(["tag", "--list", tag]).trim() !== "") blocked(`the tag ${tag} exists locally — CI makes the tag; delete the local one`);
 if (remoteRef(`refs/tags/${tag}`) !== null) blocked(`the tag ${tag} already exists on origin`);
 
+// Read the module's version LIST, never `@v/<tag>.info`: asking the proxy for a version before its
+// tag exists makes it CACHE the miss ("unknown revision"), and CI's read-back then times out on
+// that cached 404 (v0.3.4, 2026-11-10, run 42892298910 — best-practices L3).
 const proxy = (process.env.GOPROXY_URL || "https://proxy.golang.org").replace(/\/+$/, "");
-const infoUrl = `${proxy}/${escapePath(MODULE)}/@v/${tag}.info`;
-let proxyStatus: number;
+const listUrl = `${proxy}/${escapePath(MODULE)}/@v/list`;
+let listed: string[];
 try {
-  proxyStatus = (await fetch(infoUrl, { signal: AbortSignal.timeout(30_000) })).status;
+  const res = await fetch(listUrl, { signal: AbortSignal.timeout(30_000) });
+  const text = await res.text();
+  if (res.status !== 200) blocked(`the proxy answered HTTP ${res.status} for ${listUrl}`);
+  listed = text.split(/\s+/).filter(Boolean);
 } catch (e) {
-  blocked(`could not ask the proxy about ${tag}: ${(e as Error).message}`);
+  blocked(`could not read the proxy's version list: ${(e as Error).message}`);
 }
-if (proxyStatus === 200) blocked(`the Go proxy already serves ${MODULE}@${tag}`);
-if (proxyStatus !== 404 && proxyStatus !== 410) blocked(`the proxy answered HTTP ${proxyStatus} for ${tag}`);
+if (listed.includes(tag)) blocked(`the Go proxy already lists ${MODULE}@${tag}`);
 console.log(`guards: clean, on main = origin/main + "bump to ${tag}", ${tag} absent here, on origin and on the proxy`);
 
 // --- the cold gate ---
