@@ -77,7 +77,7 @@ so the reversal is on merits, not feasibility.
 Re-aligned from SPEC 3.0.0 to **4.0.0** (loader-js's C29 letter; owner decision 2026-11-07) in
 `1ee9771`; the gate (H6) in `928d1df`. **Version decision: v0.3.0** — the gate's floor vs v0.2.0 is
 major (SPEC 3.0.0 → 4.0.0), and Rule 6 lets a pre-1.0 minor stand with README's Breaking Changes row
-(present). Released 2026-11-08 (§ Release history). Detail of the
+(present). Released 2026-11-08 ([release.md](release.md) § Release History). Detail of the
 behaviour before and after: [handoffs.md](handoffs.md) § "Answers, 2026-11-08".
 
 Source files (package `wasmloader`):
@@ -167,100 +167,13 @@ codegen is a future add (not required for SPEC §7 conformance).
   fixtures are tested (`init_check` and `wasi_io_50` since `d03da9c`, 2026-10-26). Unchanged by
   SPEC 4.0.0. Detail: [handoffs.md](handoffs.md).
 
-## Build / release flow
+## Build / release flow, release history → [release.md](release.md)
 
 - **Build:** `go build ./...`. **Test:** `go test ./...`. **Gate:** `bun scripts/compat.ts`.
-- **Release (since 2026-11-08; first used for v0.3.0):** `bun scripts/bump.ts patch|minor|major`
-  (gated; stamps CHANGELOG and README) → commit `release: vX.Y.Z` → annotated tag `vX.Y.Z`
-  (`git tag -a -F <file>`) → push `main`, then the tag — tagging and pushing only on the owner's
-  word → CI (below) → warm the proxy. Before tagging, run CI's own gate locally on the tagged
-  commit: `bun scripts/compat.ts --release vX.Y.Z`. Installable via `go get`, indexed on
-  pkg.go.dev. No registry upload / secrets needed (unlike the JSR/PyPI/Maven ports).
-- **Proxy warm step:** after pushing the tag, run `GOPROXY=https://proxy.golang.org go list -m
-  github.com/synapticforge1/universalWasmLoader-go@vX.Y.Z` (from a scratch dir) to make `go get`
-  resolve immediately and queue pkg.go.dev indexing. (v0.1.0 was warmed at the old `jrmarcum` path.)
-
-## Release history
-
-- **v0.3.3 — published 2026-11-09** (owner: "update the project memory files, commit, push then
-  release"). SPEC 4.0.1 (loader-js's §11.1 port allowance for Go's zero-value `LoadOptions`; ledger
-  C35, closed); no behaviour change. `bump.ts patch` (floor patch: `SPEC 4.0.0 -> 4.0.1`; v0.3.2's
-  20 tests green) → `805401e` `release: v0.3.3`; annotated tag `v0.3.3` (object `1daff89`) →
-  `805401e`; `main` and the tag pushed, read back with `ls-remote`. CI run 42666702412 green (18
-  job / step conclusions, all success). Page `v0.3.3` by `github-actions[bot]`, 17:39:44Z, not a
-  draft, not a prerelease; the tag still peels to `805401e`. The Go proxy resolves v0.3.3.
-
-- **v0.3.2 — published 2026-11-09** (owner: "update the project memory files, commit, push then
-  release"). No library change; the Release page is made in H32's order. `bump.ts patch` (floor
-  patch; v0.3.1's 20 tests green) → `26f668b` `release: v0.3.2`; annotated tag `v0.3.2` (object
-  `2dc0aa7`) → `26f668b`; `main` and the tag pushed, read back with `ls-remote`. CI run
-  42661227267 green in every step of both jobs: `checks` (with `bun test scripts/`) and `release`,
-  which checked out nothing and fetched the script alone at the commit. **First page in H32's
-  order: `v0.3.2`, `author.login` = `github-actions[bot]`**, 17:06:22Z, not a draft, not a
-  prerelease, with the pkg.go.dev link on top, the CHANGELOG section and GitHub's generated notes.
-  The tag still peels to `26f668b` (nothing created or moved). The Go proxy resolves v0.3.2 at
-  `26f668b`.
-
-- **v0.3.1 — published 2026-11-09** (owner: "update the project memory files, commit, push then
-  release"). No library change; the release workflow's GitHub Release step runs on the REST API
-  (H30). `bump.ts patch` (floor patch; Rule 3: v0.3.0's 20 tests green) → `e1bba28`
-  `release: v0.3.1`; annotated tag `v0.3.1` (object `ac39bc6`) → `e1bba28`; `main` and the tag
-  pushed, read back with `ls-remote`. CI run 42638054957 green in both jobs. **The first tag run
-  of `scripts/github-release.ts`: it created GitHub Release `v0.3.1`** (by `github-actions[bot]`,
-  14:47:40Z, not a draft, the CHANGELOG notes), and the tag still peels to `e1bba28` (nothing
-  created or moved). `go list -m …@v0.3.1` through `proxy.golang.org` resolves it at `e1bba28`
-  (its `@v/list` page was still cached without it when read).
-
-- **v0.3.0 — published 2026-11-08** (owner: "yes release 0.3.0"). SPEC 4.0.0. `bump.ts minor`
-  (Rule 6) → `faf46bb` `release: v0.3.0`; annotated tag `v0.3.0` (object `b128bb4`) → `faf46bb`;
-  `main` and the tag pushed, read back with `ls-remote`. CI run 42508941015, the first of the
-  two-job workflow: `checks` and `release` all green (gate: floor major, Rule 6, v0.2.0's 7 tests
-  green). GitHub Release `v0.3.0` with the CHANGELOG notes; `proxy.golang.org` serves v0.3.0 at
-  `faf46bb` (warmed with `go list -m`).
-
-- **v0.2.0 — published 2026-10-20.** Module path moved to `github.com/synapticforge1/...` after the
-  repo transfer (breaking for importers, no API change). See "Repository location".
-- **v0.1.0 — published 2026-06-24** (under the old `github.com/jrmarcum/...` module path) (first public release; annotated tag pushed to `origin`). Proxy
-  warmed (`proxy.golang.org` serves it); pkg.go.dev indexes within minutes. `CHANGELOG.md` (Keep a
-  Changelog format) added at repo root.
-- **GitHub Releases are automated via `.github/workflows/release.yml`** (added 2026-06-24; fires
-  on any `v*` tag push; since 2026-11-09 there is no `workflow_dispatch` — only new tags get pages,
-  owner). The GitHub CLI is
-  not used anywhere, CI included (owner, 2026-11-08; working-rules Tooling 6). Its history:
-  - 2026-06-24: one job — build, then the Release from the tag's `CHANGELOG.md` section.
-  - 2026-10-26: `go vet` + `go test` gate added (a backfill of a tag that predates `tests/` skips
-    them with a `::warning::`; a tag push never does).
-  - 2026-11-08 (`928d1df`): the compatibility gate `bun scripts/compat.ts --release $TAG`.
-  - **2026-11-08 (`2ff71ef`, owner, workspace C30): two jobs, no `uses:`.** `checks`
-    (`contents: read`, tokenless clone) runs build / vet / test / gate; `release`
-    (`contents: write`) runs only git, awk and `gh`, after checking the tag is still the commit
-    `checks` passed. Go and Bun are installed from official downloads pinned by version + sha256
-    (`GO_VERSION` must equal `go.mod`'s `go` line). `12e3fb4`: the notes heading is matched
-    literally (`index`), since gawk reads the old dynamic regex as a bracket expression.
-    First run: v0.3.0's, 42508941015, green.
-  - **2026-11-09 (workspace H30, no GitHub CLI): the `release` job runs `scripts/github-release.ts`**
-    (Bun pinned by sha256, downloads retried; GitHub's REST API with `GITHUB_TOKEN`) in place of
-    the `awk` notes step and the CLI's view / edit / create. The tag must exist and peel to the
-    commit `checks` passed; an existing Release gets its notes updated (as the CLI's edit did); a
-    write is read back. A backfilled tag that predates the script uses the default branch's copy.
-    Proven read-only against the real GitHub: v0.1.0 / v0.2.0 / v0.3.0 → "exists with these
-    notes" (the new notes equal the bodies the old step wrote), a wrong commit and an absent tag
-    refused. A mock API covered the write paths (8 cases; a mutant with the commit check skipped
-    turned exactly "tag moved" red). **MEASURED on GitHub with v0.3.1** (run 42638054957: Release
-    created, tag unchanged).
-  - **2026-11-09, later (workspace H32 + best-practices 7.21): brought to H32's order.** Four
-    gaps against the recipe closed: an existing page is now done with NO write (it was PATCHed);
-    every request has a 30 s limit, request to last byte (there was none); the tag is peeled
-    again after the POST and the read-back checks "not a draft"; the `release` job checks out
-    nothing (it cloned the tag) — it fetches the script alone at `github.sha`. The body is a
-    pkg.go.dev link on top, then the CHANGELOG section read at the commit, with
-    `generate_release_notes`. `workflow_dispatch` (the backfill path) is gone: only new tags get
-    pages (owner). `checks` now runs `bun test scripts/` — `scripts/github-release.test.ts`, 12
-    cases on a `Bun.serve` mock; inverted by five one-line mutants (no sha check, no missing-tag
-    refusal, no existing-page stop, no second peel, no time limit), each catching only its own
-    case. Real GitHub, read-only `--dry-run`: `v0.3.1` → "already exists, nothing to do"; at
-    v0.3.0's commit → refused; `v9.9.9` → refused. **MEASURED on GitHub with v0.3.2** (run
-    42661227267: page by `github-actions[bot]`, tag unchanged).
+- **How a release runs** (the owner's order, 2026-11-10: CI checks, then CI tags, then the page,
+  then the proxy) and **every release so far** (newest first, a summary each) live in ONE place
+  since 2026-11-10 (owner, workspace letter H33): [release.md](release.md). They were here until
+  then; the release-workflow history moved with them.
 
 ## Repo publishing decisions (2026-06-24)
 

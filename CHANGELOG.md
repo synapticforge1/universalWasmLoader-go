@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**No change to the library.**
+
+### Changed
+
+- Releases run in a fixed order: the maintainer's script pushes `main` only; CI checks that commit,
+  then creates the tag, then the GitHub Release page from the tag, then confirms that
+  proxy.golang.org and sum.golang.org serve the new version. Tags are no longer pushed by hand.
+
 ## [v0.3.3] - 2026-11-09
 
 **No change to the library's behaviour.**
