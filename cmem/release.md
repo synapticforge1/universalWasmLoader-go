@@ -84,6 +84,20 @@ release in this order.**
 
 Newest first. Each: what changed, then how it was released and read back.
 
+### v0.3.5 — 2026-11-10
+
+**What changed:** no library change. The release script's guard asks proxy.golang.org only for the
+module's version LIST, never for the version itself before CI has tagged it — that question made
+the proxy cache "not found" and failed v0.3.4's first read-back (best-practices L3).
+**Release:** owner: "push and release", level patch. The fix landed with the push (`fee5dec`).
+`bump.ts patch` (floor patch; v0.3.4's 20 tests green) committed `5d39a3a` `bump to v0.3.5`;
+`release.ts` pushed `main` only. **Run 42904086097, green in every job on its first attempt:**
+`checks` ("Is this a release?" → new) → `tag` 21:21:13–15Z, the annotated `v0.3.5` (object
+`32cc8b7`, tagger `github-actions[bot]`) on `5d39a3a` → `release` 21:21:22–25Z, the page by
+`github-actions[bot]`, not a draft → `publish` 21:21:32–44Z, the proxy served v0.3.5 within 12 s
+(`Origin.Hash` = `5d39a3a`, sum.golang.org's `h1:`), then the checksum-verified download. **The
+first release in the owner's order with no step by hand after `release.ts`.**
+
 ### v0.3.4 — 2026-11-10
 
 **What changed:** no library change. Releases run in the owner's order — the maintainer's script
