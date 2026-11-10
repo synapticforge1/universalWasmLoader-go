@@ -1,15 +1,18 @@
-// bun scripts/bump.ts patch|minor|major — prepare a release, gated (workspace
-// layout-and-packaging.md § "The compatibility gate", Rule 2). A Go module has no version line:
-// the version IS the git tag. So this script computes the next version from the last tag,
-// refuses a bump below the surface floor (Rule 6: a 0.y.z minor may stand for a major floor
-// only with README's Breaking Changes row), runs the previous tag's tests for a compatible
-// step (Rule 3), and then stamps CHANGELOG.md (`## [Unreleased]` → `## [vX.Y.Z] - <date>` +
-// the link ref) and README.md (`| _next release_` → `| vX.Y.Z`).
+// bun scripts/bump.ts patch|minor|major — the bump of a release, gated (workspace
+// layout-and-packaging.md § "The compatibility gate", Rule 2; release-process.md § 5 U1–U3).
+// The level is a REQUIRED argument (no default). A Go module has no version line: the next version
+// comes from the last tag, and the top `## [vX.Y.Z]` heading of CHANGELOG.md is what arms the
+// release in CI (scripts/ci-release.ts state). This script refuses a dirty tree (untracked files
+// count), a stale surface and a bump below the floor (Rule 6: a 0.y.z minor may stand for a major
+// floor only with README's Breaking Changes row), runs the previous tag's tests for a compatible
+// step (Rule 3), stamps CHANGELOG.md (`## [Unreleased]` → `## [vX.Y.Z] - <date>` + the link ref)
+// and README.md (`| _next release_` → `| vX.Y.Z`), and makes the commit `bump to vX.Y.Z` itself
+// (U2: the bump is its own commit, made by the tooling).
 //
-// It does NOT commit, tag or push: review the diff, commit it as `release: vX.Y.Z`, and the
-// owner tags and pushes (a pushed `v*` tag publishes — .github/workflows/release.yml).
-// `--dry-run` prints the decision and changes nothing.
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+// It does NOT tag or push: `bun scripts/release.ts` pushes `main`, and CI tags after its checks
+// (owner, 2026-11-10). `--dry-run` prints the decision and changes nothing.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ROOT, type Level, LEVELS, assertSnapshotCurrent, breakingRow, bumpVersion, describeTests, floorOf,
@@ -89,7 +92,29 @@ function main(): number {
     }
   }
   console.log(`stamped CHANGELOG.md${rd.includes("| _next release_") ? " and README.md" : ""} for ${next}.`);
-  console.log(`next: review, \`git commit -F <file>\` as "release: ${next}"; tagging ${next} and pushing are the owner's.`);
+
+  // U2: the bump is its own commit, holding only what this script changed.
+  const msgDir = mkdtempSync(join(tmpdir(), "uwl-go-bump-"));
+  try {
+    const msg = join(msgDir, "msg.txt");
+    writeFileSync(msg, `bump to ${next}\n`);
+    git(["add", "--", "CHANGELOG.md", "README.md"]);
+    git(["commit", "-q", "-F", msg]);
+  } finally {
+    rmSync(msgDir, { recursive: true, force: true });
+  }
+  const subject = git(["log", "-1", "--format=%s"]).trim();
+  const changed = git(["show", "--name-only", "--format=", "HEAD"]).trim().split("\n").filter(Boolean);
+  if (subject !== `bump to ${next}` || changed.some((f) => f !== "CHANGELOG.md" && f !== "README.md")) {
+    console.error(`read-back failed: HEAD is "${subject}" changing ${changed.join(", ")}`);
+    return 1;
+  }
+  if (git(["status", "--porcelain"]).trim() !== "") {
+    console.error("read-back failed: the tree is not clean after the bump commit");
+    return 1;
+  }
+  console.log(`committed "bump to ${next}" (${changed.join(", ")}).`);
+  console.log(`next: \`bun scripts/release.ts\` pushes main; CI checks, then tags ${next}, makes the page and reads the proxy.`);
   return 0;
 }
 

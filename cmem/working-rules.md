@@ -15,17 +15,21 @@ otherwise.
   copy it aside first.
 - **Docs and memory land with the code they describe.** User-facing changes go in README and
   `CHANGELOG.md` `## [Unreleased]`; internal records stay in `cmem/`.
-- **Nothing is pushed, tagged or published unless the owner says so.** A pushed `v*` tag IS the
-  release: `release.yml` creates the GitHub Release, and `proxy.golang.org` caches the module
-  content forever — a tagged tree can never change (Go's checksum database; H19 hazard 4).
+- **Nothing is pushed, tagged or published unless the owner says so** (§ Owner commands below
+  says which word does what). **A push of `main` whose CHANGELOG top `## [vX.Y.Z]` is untagged IS a
+  release:** CI tags it, makes the page and the proxy serves it. Nobody tags by hand — CI does,
+  after its checks (owner, 2026-11-10; [release.md](release.md)). `proxy.golang.org` caches the
+  module content forever — a tagged tree can never change (Go's checksum database; H19 hazard 4).
 
 ## The gate (workspace layout-and-packaging.md § "The compatibility gate")
 
-- **SemVer 2.0.0; a bump is gated, never judged.** A Go module has no version line: the version
-  IS the tag. `bun scripts/bump.ts patch|minor|major` computes the next version from the last tag,
-  refuses a bump below the floor, runs the previous tag's tests for a compatible step, and stamps
-  `CHANGELOG.md` / README. It never commits, tags or pushes. CI repeats
-  `bun scripts/compat.ts --release <tag>` on the tag.
+- **SemVer 2.0.0; a bump is gated, never judged.** A Go module has no version line: the next
+  version comes from the last tag, and CHANGELOG's top `## [vX.Y.Z]` arms the release.
+  `bun scripts/bump.ts patch|minor|major` (level required) refuses a dirty tree and a bump below
+  the floor, runs the previous tag's tests for a compatible step, stamps `CHANGELOG.md` / README
+  and commits `bump to vX.Y.Z`; `bun scripts/release.ts` pushes `main` only. CI repeats
+  `bun scripts/compat.ts --release <tag>` on that untagged commit before it tags. The whole flow:
+  [release.md](release.md).
 - **The surface (Rule 1)** is `api-surface.txt`, produced by the test
   `internal/apisurface` (go/ast: module path, the package doc's `SPEC.md vX.Y.Z`, every exported
   declaration by type). `go test ./...` fails when it is stale. **An intended surface change
@@ -36,17 +40,18 @@ otherwise.
   README's `### ⚠️ Breaking Changes` row (`| _next release_ …` until bumped).
 - **Behaviour (Rule 3):** the previous tag's `*_test.go` run against the current code; a tag that
   tracked no fixtures (v0.2.0 and older) borrows the current `tests/`, and the report says so.
-- **CI (`release.yml`, owner 2026-11-08 / -09):** `v*` tags only (no backfill trigger: only NEW
-  tags get Release pages, owner 2026-11-09). Two jobs — `checks` (read-only token, tokenless
-  clone = `github.sha`) runs everything that executes package code, including
-  `bun test scripts/`; `release` (`contents: write`) checks out NOTHING: pinned Bun, then
-  `scripts/github-release.ts` fetched alone at `github.sha` and run (Tooling 6). No `uses:`
+- **CI (`release.yml`, owner 2026-11-08 / -09 / -10):** every push of `main` runs `checks`
+  (read-only token, tokenless clone = `github.sha`; everything that executes package code,
+  including `bun test scripts/`); only for a release does the same run go on to `tag` → `release`
+  → `publish`, which check out NOTHING (pinned Bun, then `scripts/ci-release.ts` fetched alone at
+  `github.sha`). Top-level `permissions: {}`; concurrency per ref, never cancelled. No `uses:`
   steps: Go and Bun are pinned by version AND sha256 in the workflow's `env`; move a version and
   its hash together, and keep `GO_VERSION` equal to `go.mod`'s `go` line (the job refuses
   otherwise). Every download has `--max-time` and retries; the sha256 decides. Prove a change to
-  the script with `bun test scripts/` and `bun scripts/github-release.ts --dry-run` (read-only,
-  real GitHub; needs `GITHUB_REPOSITORY`, `RELEASE_TAG`, `RELEASE_SHA`). A changed workflow is
-  proven only by its next tag run.
+  the CI script with `bun test scripts/` and its read-only commands against the real services
+  (`state`, `tag --dry-run`, `page --dry-run`, `proxy`; env `GITHUB_REPOSITORY`, `RELEASE_TAG`,
+  `RELEASE_SHA`); rehearse a changed `release.ts` / `bump.ts` against a scratch bare `origin`
+  (best-practices 7.22). A changed workflow is proven only by its next real run.
 - **The local gate is CI's gate:** `go build ./...` → `go vet ./...` → `go test -count=1 ./...` →
   `bun scripts/compat.ts`. Read every exit code; diff the counts below — a drop at exit 0 is a
   failure.
@@ -54,10 +59,11 @@ otherwise.
   reason, restore. A test of a time limit needs a watchdog (best-practices L2); a test double must
   refuse what the spec forbids (L1).
 - **No inline scripts either:** `bun -e` counts as a heredoc for this rule (a `bun -e` YAML parse
-  slipped in on 2026-11-08, as did a `printf` merge message — use a file written with `Write`).
+  slipped in on 2026-11-08, as did a `printf` merge message, and a no-op `bun -e ""` on
+  2026-11-10 — use a file written with `Write`).
 - **Test counts:** root package 20 (9 SPEC §8/§10 + pattern tests in `loader_test.go`, 11
   refusal tests in `refusal_test.go`); `internal/apisurface` 1 (2026-11-08); `bun test scripts/`
-  12 (the release-page script against a mock API, 2026-11-09).
+  20 (the CI release script against one mock of GitHub, the Go proxy and sumdb, 2026-11-10).
 
 ## Tooling (workspace Tooling rules, 🔒 owner)
 
@@ -67,9 +73,10 @@ otherwise.
    one-time scratch script may be any language and is deleted after use. Product code and tests
    (`*_test.go`, `internal/apisurface`) are not scripts. A port of a script replaces its original
    only after an output diff proves them equivalent. Committed scripts: `scripts/compat.ts`,
-   `scripts/bump.ts` (2026-11-08) and `scripts/github-release.ts` (2026-11-09; it replaced the
-   workflow's `awk` notes step, proved equal on all three existing Releases' notes; brought to
-   H32's order the same day), tested by `scripts/github-release.test.ts`.
+   `scripts/bump.ts` (2026-11-08), `scripts/release.ts` (2026-11-10, the local release) and
+   `scripts/ci-release.ts` (2026-11-10; `state` / `tag` / `page` / `proxy` — it replaced
+   `github-release.ts` of 2026-11-09, whose page logic it keeps), tested by
+   `scripts/ci-release.test.ts`.
 2. **No heredocs, ever** — not `<<EOF`, `@'…'@`, `-F -`. Content goes through `Write`/`Edit`.
 3. **Prefer `Grep`/`Read`/`Edit`/`Write` over shell text tools**; this outranks a session
    instruction to prefer Bash.
@@ -77,9 +84,9 @@ otherwise.
 5. **When the exit code is the measurement, do not pipe it.**
 6. 🔒 **No GitHub CLI, in CI too** (owner, 2026-11-08; workspace Tooling rule 9, letter H30).
    Check the repo instead: `git ls-remote` (and this repo's files) for what GitHub holds, the Go
-   proxy (`proxy.golang.org/<module>/@v/list`) for what is published. In CI, every new tag's
-   GitHub Release page is made by `scripts/github-release.ts` (GitHub's REST API,
-   `GITHUB_TOKEN`), never by hand — **in H32's order, keep it** (workspace letter H32, owner
+   proxy (`proxy.golang.org/<module>/@v/list`) for what is published. In CI, the tag and every
+   new tag's GitHub Release page are made by `scripts/ci-release.ts` (GitHub's REST API,
+   `GITHUB_TOKEN`), never by hand — the page **in H32's order, keep it** (workspace letter H32, owner
    2026-11-09): (1) the tag exists on GitHub and peels (annotated followed) to the commit
    `checks` passed, because `POST /releases` CREATES a missing tag; (2) a page already there =
    done, NO write; (3) POST (a pkg.go.dev link on top, the CHANGELOG section,
@@ -129,3 +136,22 @@ otherwise.
   creator verifies and closes (🔒 owner, 2026-10-26).
 - **At session start** read `../../cmem/workspace-correspondence.md` (every row whose "to" names
   this repo), then the letters in `../../cmem/handoffs.md` it points to.
+
+## Owner commands: "commit", "push", "release" (owner, 2026-11-10)
+
+🔒 Written into every project by the workspace session on the owner's direction (2026-11-10:
+"please write that into each project"; workspace `cmem/working-rules.md` Tooling rule 12, letter
+H34). When the owner says:
+
+- **"commit"** — first run "update the project memory files" (re-derive this repo's `cmem/` from
+  its current state), then commit to the branch being worked on. Nothing is pushed.
+- **"push"** — perform "commit", then merge the branch into `main`, then push `main` (and the
+  working branch) to GitHub (`origin`) and read it back with `git ls-remote`.
+- **"release"** — perform "push", then the release process: the workspace's
+  `cmem/release-process.md` §§ 5–8 — CI checks first, then CI pushes the tag, then the GitHub
+  Release page from the tag, then the publish to the registry — recorded in `cmem/release.md`
+  § "Release History" (newest first, a summary of what changed). The level (patch / minor /
+  major) is the owner's: ask if it was not given.
+
+Each command includes the one before it, and none goes further than its own word (a "commit"
+never pushes, a "push" never releases). This repo's own gate and merge rules apply at each step.

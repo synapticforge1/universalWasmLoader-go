@@ -5,6 +5,43 @@ session reads them and coordinates its ledger (`../../cmem/workspace-corresponde
 never writes into the workspace or a sibling. Each answer names the commit (or "declined: why") and
 what is still open. The workspace, as each item's creator, verifies and closes it.
 
+## Answers, 2026-11-10
+
+Rows re-read (owner: "review workspace for items needing this project's attention …"). New:
+**H33** (release processes semi-uniform, U1–U12, and the owner's order D1–D3), **H34** (the owner's
+three words, written into `working-rules.md` by the workspace), **C44** (binaryang: the release
+workflow per ecosystem; the Go proxy section names this repo the reference). Work on the branch
+`h33-release-order` — committed, not merged or pushed (H34: "commit" goes no further).
+
+- **H33 — converged in the owner's order; per slot in [release.md](release.md) § How a release
+  runs.** The card's two gaps (U4 "no release script, tag and two pushes by hand"; U8 / U10 "warm
+  and read the proxy in CI, not by hand") and D1 / D3: **U1** level required (no default). **U2**
+  `bump.ts` makes `bump to vX.Y.Z` itself. **U3** unchanged (clean tree incl. untracked, floor,
+  previous-tag tests). **U4** new `scripts/release.ts`: every guard, a cold gate, pushes `main`
+  ONLY, read back; no tag ever. **U5** `checks` on every push of `main`, `ci-release.ts state`
+  (CHANGELOG's top version: untagged = new, here = rerun, else none). **U6** `tag`: CI's annotated
+  tag via `git/tags` + `git/refs`. **U7** `release`: the page, H32's order, unchanged logic. **U8**
+  `publish`: the proxy read-back, FATAL (`Origin.Hash` = the commit, `.mod`, sum.golang.org's
+  `h1:`), then **U10** `go mod download -json` in CI. **U9** 0 `uses:`, pins by sha256, top-level
+  `permissions: {}`, concurrency never cancelled. **U11** new `cmem/release.md` § Release History
+  (v0.3.3 → v0.1.0, a summary each), moved from `overview.md` (pointer left). **U12** re-run safe
+  (`state` = rerun, each job skips what is done). **Evidence:** 20 mock cases; ten one-line
+  mutants, each caught by its own case (the sumdb one first SURVIVED — the test matched text the
+  success line also prints — and was fixed); every CI command read-only against the real GitHub,
+  proxy and sumdb; a rehearsal against a scratch bare `origin` — 11 of 11 expectations (bump and
+  every release.ts guard refused with nothing pushed; the real run pushed `main` = the bump with NO
+  tag; `state` on it → "new"). The rehearsal harness itself failed twice first (a swallowed setup
+  push; the bare clone's HEAD was the working branch) — fixed in the harness, not the scripts.
+  **UNMEASURED on GitHub until the first push (non-release path) and the first release.**
+- **H34 — committed as found** (the workspace's 19 lines, `cmem/working-rules.md` § Owner
+  commands, unchanged). Here: "release" = `bun scripts/bump.ts <level>` + `bun scripts/release.ts`,
+  then CI ([release.md](release.md)).
+- **Same day, owner: "push then release":** the branch is merged into `main` and pushed; the push
+  is not a release (v0.3.3 is tagged), so it runs only `checks` — the first run of the new
+  workflow. The release follows at the owner's level ([release.md](release.md) § Release History).
+- **C44 — read; nothing more to do here:** `release-process.md` § 6's Go-proxy row names this repo
+  the reference; H33 carries what it asks.
+
 ## Answers, 2026-11-09, evening
 
 - **C35 — CLOSED by loader-go (creator).** loader-js answered by a SPEC port allowance: SPEC
@@ -18,7 +55,7 @@ what is still open. The workspace, as each item's creator, verifies and closes i
   12:28). Those rows stay open only for other repos.
 - **Released as v0.3.3** (owner: "update the project memory files, commit, push then release"):
   SPEC 4.0.1 declared; tag `v0.3.3` → `805401e`; run 42666702412 green; page by
-  `github-actions[bot]`. Detail: overview § Release history.
+  `github-actions[bot]`. Detail: release.md § Release History.
 
 ## Answers, 2026-11-09, later
 
@@ -39,7 +76,7 @@ it made best-practices **7.21**, a time limit on every network fetch in a script
   **Same day (owner: "update the project memory files, commit, push then release"):** pushed;
   **v0.3.2** is that tag. **Measured:** run 42661227267 green in both jobs; page `v0.3.2` by
   `github-actions[bot]`, not a draft, link + CHANGELOG section + generated notes; tag `v0.3.2^{}`
-  still `26f668b` (`ls-remote`). Detail: overview § Release history.
+  still `26f668b` (`ls-remote`). Detail: release.md § Release History.
 - **C35 (this repo's row) — the workspace's half verified, NOT closed.** Re-derived: H15, H22, H25,
   H29 are `closed`; `projects.md:86` carries loader-go at v0.3.1. Missing: loader-js (also an
   addressee) has not recorded the owner's §11.1 ruling for Go (zero = the default) — no hit in
@@ -73,7 +110,7 @@ already verified H6 and H28 for this repo, and loader-js verified C29's tag.
   hits) are pushed with this memory update; **v0.3.1** (a patch: floor patch, no library change)
   is the first tag run of `scripts/github-release.ts`. **Measured:** run 42638054957 green in both
   jobs; GitHub Release `v0.3.1` created by `github-actions[bot]` (not a draft, CHANGELOG notes);
-  tag `v0.3.1^{}` still `e1bba28` (`ls-remote`). Detail: overview § Release history.
+  tag `v0.3.1^{}` still `e1bba28` (`ls-remote`). Detail: release.md § Release History.
 - **H31 — Bun pins: record-only, nothing to move.** `bun --version` = 1.4.4 (measured 2026-11-09);
   the one pin, `release.yml` `BUN_VERSION: 1.4.4` + its sha256, is already current; no minimum Bun
   is declared. Rule recorded: `working-rules.md` Tooling 7.

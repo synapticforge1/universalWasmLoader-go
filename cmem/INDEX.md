@@ -39,4 +39,5 @@ letters it points to. Rules: [working-rules.md](working-rules.md).
 | [working-rules.md](working-rules.md) | The checklist: git, the compatibility gate, tooling (Bun scripts), privacy (path test, maintainer address), boundaries, session start |
 | [best-practices.md](best-practices.md) | METHOD rules: this repo's own (§ L) + the workspace's 28 ★ rules, copied verbatim and stamped 2026-11-08 |
 | `local/` (gitignored) | Private per-clone machine facts — `environment.md` (the H16 exFAT `.git` setting) |
+| [release.md](release.md) | 🔒 The ONE release record (owner, 2026-11-10): how a release runs in the owner's order (U1–U12: bump → release.ts pushes `main` → CI checks → CI tags → page → Go proxy read-back) and "Release History", newest first, a summary each |
 | [overview.md](overview.md) | What this loader port is, where it lives (`synapticforge1` org), runtime (wazero), API, SPEC 4.0.0 conformance and the port's choices, tests, the release flow and the two-job CI, release history (v0.1.0, v0.2.0, v0.3.0) |
