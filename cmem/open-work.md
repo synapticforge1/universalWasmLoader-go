@@ -4,9 +4,9 @@ Only open items; each points at its record. Status as of 2026-11-10.
 
 ## Owner actions
 
-1. **The fix `3045f67` and its records are on the branch `fix-proxy-guard`, not on `main`** (the
-   release guard reads the proxy's `@v/list`, never `.info` — [release.md](release.md) § v0.3.4,
-   best-practices L3). It must land (the owner's "push") before the NEXT release.
+None open. (2026-11-10, owner: "push and release": the guard fix `3045f67` lands on `main` with
+this push, and the release after it is the first whose local guard asks the proxy only for
+`@v/list` — [release.md](release.md).)
 
 ## Waiting on others
 
