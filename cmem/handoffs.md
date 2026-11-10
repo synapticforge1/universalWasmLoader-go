@@ -36,6 +36,9 @@ workflow per ecosystem; the Go proxy section names this repo the reference). Wor
 - **H34 — committed as found** (the workspace's 19 lines, `cmem/working-rules.md` § Owner
   commands, unchanged). Here: "release" = `bun scripts/bump.ts <level>` + `bun scripts/release.ts`,
   then CI ([release.md](release.md)).
+- **Same day, owner: "push then release":** the branch is merged into `main` and pushed; the push
+  is not a release (v0.3.3 is tagged), so it runs only `checks` — the first run of the new
+  workflow. The release follows at the owner's level ([release.md](release.md) § Release History).
 - **C44 — read; nothing more to do here:** `release-process.md` § 6's Go-proxy row names this repo
   the reference; H33 carries what it asks.
 
