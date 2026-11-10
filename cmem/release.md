@@ -99,8 +99,11 @@ release?" → new) → `tag` 20:09:08–10Z made the annotated `v0.3.4` (object 
 5 minutes on a CACHED 404 for `@v/v0.3.4.info` ("unknown revision v0.3.4"), while `@v/list`
 already listed v0.3.4. Cause: `release.ts`'s own guard had requested that `.info` before the tag
 existed (best-practices L3); fixed in `3045f67` (the guard reads `@v/list`; re-rehearsed: no
-`.info` request). **Open:** "Re-run failed jobs" on 42892298910 once the proxy serves v0.3.4
-(owner, web UI) — U12; the tag and the page are already done and will be skipped.
+`.info` request). **The proxy served v0.3.4 at 20:41Z** (polled every 5 min: 404 until 20:36Z,
+then 200 — the cached miss lasted about 30 min): `.info` `Origin.Hash` = `ce6698f`, `Ref` =
+`refs/tags/v0.3.4`; sum.golang.org `h1:eLDAZJDgHYVEV9Gf+WkGuUl5glPGCC25Yj0xJkK8+t4=`; CI's own
+`ci-release.ts proxy` run locally → exit 0. **Open:** "Re-run failed jobs" on 42892298910 (owner,
+web UI; U12) so CI's record is green too — the tag and the page are done and are skipped.
 
 ### v0.3.3 — 2026-11-09
 
